@@ -445,7 +445,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create gh_staging0-0.1.1 --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
+    gh release create 0.1.1 --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -491,7 +491,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create gh_staging0-0.1.2 --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
+    gh release create 0.1.2 --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -599,7 +599,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
-    gh release create gh_test0-0.1.1 --repo NevilleDNZ/gh_test0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
+    gh release create 0.1.1 --repo NevilleDNZ/gh_test0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -635,7 +635,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
-    gh release create gh_test0-0.1.2 --repo NevilleDNZ/gh_test0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
+    gh release create 0.1.2 --repo NevilleDNZ/gh_test0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -1002,7 +1002,8 @@ tag_and_release(){
     # Done#0: Auto increament $VER
     CO Create a GitHub release for the tag
     # was: $TRACK gh release create v$VER --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
-    $TRACK gh release create $PRJ_UPSTREAM-$VER --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
+    # was: $TRACK gh release create $PRJ_UPSTREAM-$VER --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
+    $TRACK gh release create "$VER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
 #    CD -
  }
 
