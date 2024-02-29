@@ -6,18 +6,24 @@ set_env(){
 
     #: "${PRJ_UPSTREAM:=ghstpipe0}"
     #: "${PRJ_UPSTREAM:=gh_test0}"
-    : "${OPT_BASHDB:=""}"
+    : "${OPT_BASHDB:="--bashdb"}"
     : "${OPT_WEB_URL:=""}"
     : "${OPT_VERBOSITY:="-v"}"
+    : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute 
+    : "${OPT_PROMPT:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
+
     VEBOSE='^-v$'
     VERY_VEBOSE='^-v+$'
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
 
-    # Done#0: rename TRACK to TRACK, and WATCH to WATCH
+    if [ "$*" = "" ]; then
+        # set -- PRJ_UPSTREAM=gh_hw_x init;
+        set -- PRJ_UPSTREAM=ghpl_test`date +"%H%M%S"` base_test
+        # set -- PRJ_UPSTREAM=ghpl_staging`date +"%H%M%S"` TESTING=testing STAGING=staging base_test
+        # cd .. # debugging ghstpipe in VSCode
+    fi
+
     if [ -n "$OPT_BASHDB" ]; then # VSCode debug
-        # Done#0: rename gh_hw_x to gh_hwx
-        set -- PRJ_UPSTREAM=gh_hw_x init;
-        cd .. # debugging ghstpipe in VSCode
         WATCH="" TRACK=""
         WAIT="" # turn off tracing to allow VSCode bash-debug. BUT break at each WAIT
     else
@@ -56,11 +62,14 @@ set_env(){
     : "${USER_FEATURE:="$USER_UPSTREAM$_DOWNSTREAM"}"
     : "${PRJ_FEATURE:=$PRJ_UPSTREAM$_DOWNSTREAM}"
     : "${APP:=$PRJ_UPSTREAM-ts.sh}"
-    : "${VER:=0.1.0}"
+    : "${RELEASE:=+++}"
     : "${PAT=$HOME/.ssh/gh_pat_$USER_UPSTREAM.oauth}"
 
-    # Done#0: rename feature/desc-a hotfix/desc-b
-    : "${FEATURE:=feature/debut-src}"
+    #: "${RELEASE_PREFIX:=release/}" # needed to uncloak releases to git from github
+    : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-(
+    : "${FEATURE_PREFIX:=feature/}"
+
+    : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
     : "${TESTING:=}" # alt2
     : "${FULLTEST:=}" # alt3
     : "${DEVELOP:=develop}"
@@ -69,8 +78,8 @@ set_env(){
     : "${TRUNK=trunk}"
 
     # cf. https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility#changing-a-private-repository-to-a-public-repository
-    : "${VISIBILITY=private}"
-    : "${VISIBILITY=public}"
+    : "${VISIBILITY:=private}"
+    : "${VISIBILITY:=public}"
 
     PIPELINE_FEATURE="$TESTING $FULLTEST $DEVELOP" # from FEATURE
     PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from DEVELOP
@@ -121,12 +130,12 @@ Basically, a list of all the routine git & gh CLI tasks that need to be performe
     ghstpipe.sh help
     ghstpipe.sh USER_UPSTREAM=You PRJ_UPSTREAM=gh_hw init
     cd gh_hw$_DOWNSTREAM
-    ghstpipe.sh USER_UPSTREAM=You VER=0.1.1 update release
+    ghstpipe.sh USER_UPSTREAM=You RELEASE=0.1.1 update release
     ghstpipe.sh USER_UPSTREAM=You update
-    ghstpipe.sh USER_UPSTREAM=You VER=0.1.2 release
+    ghstpipe.sh USER_UPSTREAM=You RELEASE=+++ release # 0.1.2
 
 ## Usage for your repo
-    env USER_UPSTREAM=YourGHLogin PRJ_UPSTREAM=YourGHProgram APP=YourAppName APP=YourAppName VER=0.1.2 ghstpipe.sh setup feature update release
+    env USER_UPSTREAM=YourGHLogin PRJ_UPSTREAM=YourGHProgram APP=YourAppName APP=YourAppName RELEASE=0.1.2 ghstpipe.sh setup feature update release
 
 ## SYNOPSYS
 You need two github accounts: '\$USER_UPSTREAM' and '\$USER_FEATURE'
@@ -207,14 +216,14 @@ version of \$DEVELOP.
     ghstpipe.sh PRJ_UPSTREAM=gh_hello_world init
     cd gh_hello_world$_DOWNSTREAM
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.1 update release
+    ghstpipe.sh RELEASE=0.1.1 update release
     ghstpipe.sh update
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.2 update release
+    ghstpipe.sh RELEASE=+++ update release
     ghstpipe.sh update
     ghstpipe.sh update
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.3 release
+    ghstpipe.sh RELEASE=0.1.3 release
 
 ## TODO - Implement and Enforce:
 
@@ -445,7 +454,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
+    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Initial release 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -491,7 +500,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
+    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Initial release 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -599,7 +608,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Version 0.1.1' --notes 'Initial release version 0.1.1'
+    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Initial release 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -635,7 +644,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Version 0.1.2' --notes 'Initial release version 0.1.2'
+    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Initial release 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -895,11 +904,10 @@ add_feature(){
     $TRACK git pull # with default # origin $FEATURE # QQQ
 
     $WATCH mkdir -p bin
-    $WATCH echo "echo 'hello, world! $VER'" > bin/$APP
+    $WATCH echo "echo 'hello, world! $RELEASE'" > bin/$APP
     $TRACK chmod ug+x bin/$APP
     $TRACK git add bin/$APP
-    #Done#0: remove VER from commit
-    $TRACK git commit -m "Add a foundation shell script $VER"
+    $TRACK git commit -m "Add a foundation shell script $RELEASE"
     $TRACK git push # with default # origin $FEATURE
 
     # CO Add another line to the script
@@ -917,8 +925,7 @@ update_feature(){
     $TRACK git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK echo "echo 'Updated @ `date +"%Y%m%d%H%M%S"` - $VER'" > bin/$APP
-    #Done#0: remove VER from commit
+    $TRACK echo "echo 'Updated @ `date +"%Y%m%d%H%M%S"` - $RELEASE'" > bin/$APP
     $TRACK git commit -am "Update $APP with $FEATURE timestamp"
     $TRACK git push # with default # origin $FEATURE
 #    CD -
@@ -998,12 +1005,28 @@ tag_and_release(){
         HEAD=$BASE
     done
 
-    # Done#0: change v to repo name
-    # Done#0: Auto increament $VER
+    case "$RELEASE" in
+        (+|++|+++)
+            major_minor_patch="${#RELEASE}"
+            read RELEASE <<<$(gh release list --repo NevilleDNZ/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')
+            if [[ "$RELEASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+               let BASH_REMATCH[$major_minor_patch]++
+               RELEASE="$(echo "${BASH_REMATCH[1]}"."${BASH_REMATCH[2]}"."${BASH_REMATCH[2]}")"
+            else
+               RELEASE=0.1.0
+            fi
+        ;;
+    esac
+    echo RELEASE=$RELEASE
+
     CO Create a GitHub release for the tag
-    # was: $TRACK gh release create v$VER --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
-    # was: $TRACK gh release create $PRJ_UPSTREAM-$VER --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
-    $TRACK gh release create "$VER" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Version $VER" --notes "Initial release version $VER"
+    # was: $TRACK gh release create v$RELEASE --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
+    # was: $TRACK gh release create $PRJ_UPSTREAM-$RELEASE --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
+     if [ -n "$major_minor_patch" ]; then
+         RELEASE="$major_minor_patch"
+         unset "$major_minor_patch"
+     fi
 #    CD -
  }
 
@@ -1041,13 +1064,13 @@ base_test(){
     $TRACK feature
     CD $PRJ_FEATURE
     $TRACK update
-    VER=0.1.1 release
+    RELEASE=0.1.1 release
     $TRACK update
     $TRACK update
-    VER=0.1.2 release
+    RELEASE=+++ release
     $TRACK update
     $TRACK update
-    VER=0.1.3 update release
+    RELEASE=0.1.3 update release
 }
 
 public_test(){

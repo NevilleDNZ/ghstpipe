@@ -8,12 +8,12 @@ Basically, a list of all the routine git & gh CLI tasks that need to be performe
     ghstpipe.sh help
     ghstpipe.sh USER_UPSTREAM=You PRJ_UPSTREAM=gh_hw init
     cd gh_hw-downstream
-    ghstpipe.sh USER_UPSTREAM=You VER=0.1.1 update release
+    ghstpipe.sh USER_UPSTREAM=You RELEASE=0.1.1 update release
     ghstpipe.sh USER_UPSTREAM=You update
-    ghstpipe.sh USER_UPSTREAM=You VER=0.1.2 release
+    ghstpipe.sh USER_UPSTREAM=You RELEASE=++ release
 
 ## Usage for your repo
-    env USER_UPSTREAM=YourGHLogin PRJ_UPSTREAM=YourGHProgram APP=YourAppName APP=YourAppName VER=0.1.2 ghstpipe.sh setup feature update release
+    env USER_UPSTREAM=YourGHLogin PRJ_UPSTREAM=YourGHProgram APP=YourAppName APP=YourAppName RELEASE=0.1.2 ghstpipe.sh setup feature update release
 
 ## SYNOPSYS
 You need two github accounts: '$USER_UPSTREAM' and '$USER_FEATURE'
@@ -94,14 +94,14 @@ version of $DEVELOP.
     ghstpipe.sh PRJ_UPSTREAM=gh_hello_world init
     cd gh_hello_world-downstream
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.1 update release
+    ghstpipe.sh RELEASE=0.1.1 update release
     ghstpipe.sh update
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.2 update release
+    ghstpipe.sh RELEASE=+++ update release
     ghstpipe.sh update
     ghstpipe.sh update
     ghstpipe.sh update
-    ghstpipe.sh VER=0.1.3 release
+    ghstpipe.sh RELEASE=0.1.3 release
 
 ## TODO - Implement and Enforce:
 
