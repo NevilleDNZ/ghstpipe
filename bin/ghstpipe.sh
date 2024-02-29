@@ -6,22 +6,19 @@ set_env(){
 
     #: "${PRJ_UPSTREAM:=ghstpipe0}"
     #: "${PRJ_UPSTREAM:=gh_test0}"
-    : "${OPT_BASHDB:="--bashdb"}"
+    #: "${OPT_BASHDB:="--bashdb"}"
+    : "${OPT_BASHDB:=""}"
     : "${OPT_WEB_URL:=""}"
     : "${OPT_VERBOSITY:="-v"}"
     : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute 
-    : "${OPT_PROMPT:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
+    : "${OPT_INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
+
+# ToDo: maybe rename proc `update` to `merge_develop`
+# ToDo: maybe rename proc `release` to `merge_release`
 
     VEBOSE='^-v$'
     VERY_VEBOSE='^-v+$'
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
-
-    if [ "$*" = "" ]; then
-        # set -- PRJ_UPSTREAM=gh_hw_x init;
-        set -- PRJ_UPSTREAM=ghpl_test`date +"%H%M%S"` base_test
-        # set -- PRJ_UPSTREAM=ghpl_staging`date +"%H%M%S"` TESTING=testing STAGING=staging base_test
-        # cd .. # debugging ghstpipe in VSCode
-    fi
 
     if [ -n "$OPT_BASHDB" ]; then # VSCode debug
         WATCH="" TRACK=""
@@ -54,7 +51,7 @@ set_env(){
     : "${_DOWNSTREAM:="-downstream"}"
 
     if [ -z "$PRJ_UPSTREAM" ]; then
-        read PRJ_UPSTREAM<<<$(git remote -v | ( read origin path method; expr "$path" : ".*/\(.*\)$_DOWNSTREAM"))
+        read PRJ_UPSTREAM <<< $(git remote -v | ( read origin path method; expr "$path" : ".*/\(.*\)$_DOWNSTREAM"))
         : "${PRJ_UPSTREAM:=gh_hw0}"
     fi
 
@@ -824,7 +821,7 @@ create_releasing_repo(){
     CO $USER_FEATURE MUST accept via notifications.
 
     if [ -z "$OPT_WEB_URL" ]; then
-        read COLL_ID<<<$(
+        read COLL_ID <<< $(
         WATCH echo '{"permission":"read"}' |
             TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
         )
@@ -964,7 +961,7 @@ create_pull_request(){
 
     # chatgpt: $TRACK gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
     BRANCH=$DEVELOP
-    read PR_URL<<<$($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$FEATURE integration into upstream $BRANCH" --body "Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+    read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$FEATURE integration into upstream $BRANCH" --body "Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
     RACECONDITIONWAIT # GH can take a little time to do the above...
     PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
     ECHO PR_NUMBER=$PR_NUMBER
@@ -999,7 +996,7 @@ tag_and_release(){
     CO Tag and Release
     HEAD=$DEVELOP # from
     for BASE in $PIPELINE_UPSTREAM; do
-        read PR_URL <<<$($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$FEATURE integration into $BASE" --body "Integrating $FEATURE changes into $BASE." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+        read PR_URL <<< $($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$FEATURE integration into $BASE" --body "Integrating $FEATURE changes into $BASE." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
         $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge
         HEAD=$BASE
@@ -1007,22 +1004,26 @@ tag_and_release(){
 
     case "$RELEASE" in
         (+|++|+++)
-            major_minor_patch="${#RELEASE}"
-            read RELEASE <<<$(gh release list --repo NevilleDNZ/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')
-            if [[ "$RELEASE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-               let BASH_REMATCH[$major_minor_patch]++
-               RELEASE="$(echo "${BASH_REMATCH[1]}"."${BASH_REMATCH[2]}"."${BASH_REMATCH[2]}")"
+            major_minor_patch="${RELEASE}"
+            # typeof_major_minor_patch="${#RELEASE}" ???
+            let typeof_major_minor_patch="${#RELEASE}"-1
+            read RELEASE <<< "$(gh release list --repo NevilleDNZ/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
+# removed due to some kind of bash/vscode bug/clash???
+#            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+#                let BASH_REMATCH[$typeof_major_minor_patch]++
+#                RELEASE="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+            IFS="." read -ra mmp <<< "$RELEASE"
+            if [ -n "${mmp[$typeof_major_minor_patch]}" ]; then
+                let mmp[$typeof_major_minor_patch]++
+                RELEASE="$(IFS="."; echo "${mmp[*]}")"
             else
-               RELEASE=0.1.0
+                RELEASE=0.1.0
             fi
         ;;
     esac
-    echo RELEASE=$RELEASE
+    echo RELEASE="$RELEASE"
 
-    CO Create a GitHub release for the tag
-    # was: $TRACK gh release create v$RELEASE --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
-    # was: $TRACK gh release create $PRJ_UPSTREAM-$RELEASE --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
+    CO Create a GitHub release for the tag    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
      if [ -n "$major_minor_patch" ]; then
          RELEASE="$major_minor_patch"
          unset "$major_minor_patch"
@@ -1087,6 +1088,14 @@ staging_test(){
 if [ "$#" = 0 ]; then
    set -- update
 fi
+
+if [ "$*" = "" ]; then
+    # set -- PRJ_UPSTREAM=gh_hw_x init;
+    set -- PRJ_UPSTREAM=ghpl_test`date +"%H%M%S"` base_test
+    # set -- PRJ_UPSTREAM=ghpl_staging`date +"%H%M%S"` TESTING=testing STAGING=staging base_test
+    cd .. # debugging ghstpipe in VSCode
+fi
+
 
 while [ $# -gt 0 ]; do
 #    CO "Processing argument: $1"
