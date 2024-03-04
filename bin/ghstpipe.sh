@@ -10,7 +10,7 @@ set_env(){
     : "${OPT_BASHDB:=""}"
     : "${OPT_WEB_URL:=""}"
     : "${OPT_VERBOSITY:="-v"}"
-    : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute 
+    : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
     : "${OPT_INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
 
 # ToDo: maybe rename proc `update` to `merge_develop`
@@ -19,6 +19,10 @@ set_env(){
     VEBOSE='^-v$'
     VERY_VEBOSE='^-v+$'
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
+    NL=$'\n'
+
+    : "${COMMIT_MESSAGE:="feature commit"}"
+    : "${MERGE_MESSAGE:="feature merge"}"
 
     if [ -n "$OPT_BASHDB" ]; then # VSCode debug
         WATCH="" TRACK=""
@@ -102,7 +106,7 @@ set_env(){
         }'
     }
 
-    eval `get_GH_PAT`
+    eval "$(get_GH_PAT)"
     # echo USER_UPSTREAM_TOKEN=$USER_UPSTREAM_TOKEN
     # echo USER_FEATURE_TOKEN=$USER_FEATURE_TOKEN
 
@@ -112,6 +116,26 @@ set_env(){
 
     skip=TrUe
     skip=
+}
+
+set_msg(){
+    # Usage: VAR 'template'
+    export $1="$2"
+    SUBJECT="$(echo "$COMMIT_MESSAGE" | head -1)"
+    BODY="$(echo "$COMMIT_MESSAGE" | tail -n +2)"
+    case "$1" in
+        (DEVELOP_PR_TITLE) eval export $1='"$FEATURE integration into upstream $BRANCH $NL $SUBJECT"';;
+        (DEVELOP_PR_BODY) eval export $1='"Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH $NL $BODY."';;
+        (DEVELOP_MERGE_SUBJECT) eval export $1='"$SUBJECT"';;
+        (DEVELOP_MERGE_BODY) eval export $1='"$BODY"';;
+        (RELEASE_PR_TITLE) eval export $1='"$FEATURE integration into $BASE $NL $SUBJECT"';;
+        (RELEASE_PR_BODY) eval export $1='"Integrating $FEATURE changes into $BASE $NL $BODY"';;
+        (RELEASE_MERGE_SUBJECT) eval export $1='"$SUBJECT"';;
+        (RELEASE_MERGE_BODY) eval export $1='"$BODY"';;
+        (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $SUBJECT"';;
+        (RELEASE_NOTES) eval export $1='"Initial release $RELEASE $NL $BODY"';;
+        (*)echo HUH | RAISE;;
+    esac
 }
 
 HELP_help="Description, usage and example"
@@ -153,7 +177,7 @@ Note: The project variables are to be stored in bash variables as follows:
 
 You probably need to update the script variables to reflect your GH name, and repo name etc..
 
-You also need to generate a Github a Personal Authentication Token for each GitHub account and store in ```PAT=$HOME/.ssh/gh_pat_$USER_UPSTREAM```.oauth
+You also need to generate a Github a Personal Authentication Token for each GitHub account and store in PAT=$HOME/.ssh/gh_pat_$USER_UPSTREAM.oauth
 ### Options - these need to be performed in the given order.
 
  * setup
@@ -308,7 +332,7 @@ echo_Q(){
 }
 
 CD(){ # avoid dancing about the 2 directories...
-    LN=`caller | sed "s/ .*//"`
+    LN="$(caller | sed "s/ .*//")"
     cmd="CD $*"
     if [ "/-/" = "/$@/" ]; then
         true
@@ -327,14 +351,14 @@ CD(){ # avoid dancing about the 2 directories...
 INDENT="===="
 
 WATCH(){ # trace only, don't track errno in $?
-    LN=`caller | sed "s/ .*//"`
+    LN="$(caller | sed "s/ .*//")"
     cmd="$*"
     [[ "$OPT_VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
     "$@" # || RAISE
 }
 
 TRACK(){
-    LN=`caller | sed "s/ .*//"`
+    LN="$(caller | sed "s/ .*//")"
     cmd="$*"
     case "$skip" in
         ("")
@@ -349,7 +373,7 @@ TRACK(){
 
 RAISE(){
     errno="$?"
-    LN=`caller 1 | sed "s/ .*//"`
+    LN="$(caller 1 | sed "s/ .*//")"
     case "$#" in
         (0) echo_Q RAISED:$LN/$errno: "$cmd" 1>&2;;
         (*) echo_Q RAISED:$LN/$errno: "$@" 1>&2;;
@@ -367,7 +391,11 @@ WAIT(){
 
 RACECONDITIONWAIT(){ # A total HACK ;-)
     # GH can take a little time to do the above...
-    sleep 12 # 6 seconds is too fast sometimes
+    if [ -n "$1" ]; then
+        sleep $1
+    else
+        sleep 12 # 6 seconds is too fast sometimes
+    fi
 }
 
 CO(){
@@ -378,9 +406,13 @@ CO(){
 }
 
 AUTH(){
+    # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
-        echo $1 | $WATCH gh auth login --with-token
+        $TRACK gh auth login --with-token <<< "$1"
+        RACECONDITIONWAIT 6 # GH can take a little time to do the above...
         THIS_AUTH="$1"
+    else
+        return 0
     fi
 }
 
@@ -808,7 +840,10 @@ create_releasing_repo(){
     CD $PRJ_UPSTREAM
 
     CO Create repo on GitHub under $USER_UPSTREAM
+    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
     $TRACK gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
+    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+
     $TRACK git push --all
 
     # if [ $PRJ_UPSTREAM = $PRJ_FEATURE ]; then # nee_DOWNSTREAM to be moved aside for $_DOWNSTREAM
@@ -904,7 +939,7 @@ add_feature(){
     $WATCH echo "echo 'hello, world! $RELEASE'" > bin/$APP
     $TRACK chmod ug+x bin/$APP
     $TRACK git add bin/$APP
-    $TRACK git commit -m "Add a foundation shell script $RELEASE"
+    $TRACK git commit -m "Add a foundation shell script"
     $TRACK git push # with default # origin $FEATURE
 
     # CO Add another line to the script
@@ -913,7 +948,22 @@ add_feature(){
 #    CD -
 }
 
-HELP_update_feature="Update timestamp script"
+HELP_update_ts_feature="Update timestamp script - needed to create non-empty tests"
+update_ts_feature(){
+
+    AUTH $USER_FEATURE_TOKEN
+    CD $PRJ_FEATURE
+    $WATCH git checkout $FEATURE # ignore initial error, for now!
+    $TRACK git pull # with default # origin $FEATURE # QQQ
+
+    CO Add another line to the script
+    $TRACK echo "echo 'Updated @ "$(date +"%Y%m%d%H%M%S")" - $RELEASE'" > bin/$APP
+    $TRACK git commit -am "Update $APP with $FEATURE timestamp"
+    $TRACK git push # with default # origin $FEATURE
+#    CD -
+}
+
+HELP_update_feature="Update developer added feature"
 update_feature(){
 
     AUTH $USER_FEATURE_TOKEN
@@ -922,8 +972,7 @@ update_feature(){
     $TRACK git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK echo "echo 'Updated @ `date +"%Y%m%d%H%M%S"` - $RELEASE'" > bin/$APP
-    $TRACK git commit -am "Update $APP with $FEATURE timestamp"
+    $TRACK git commit -am "$COMMIT_MESSAGE"
     $TRACK git push # with default # origin $FEATURE
 #    CD -
 }
@@ -942,7 +991,8 @@ merge_feature(){
         $TRACK git pull # with default # origin $BASE # get any updates
 
         CO Merge $HEAD into $BASE
-        $TRACK git merge $HEAD # WARNING: merge conflicts appear here.
+        #$TRACK git merge $HEAD # WARNING: merge conflicts appear here.
+        $TRACK git merge -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
         $TRACK git push # with default # origin $BASE
         HEAD=$BASE
     done
@@ -960,8 +1010,12 @@ create_pull_request(){
     RACECONDITIONWAIT # GH can take a little time to do the above...
 
     # chatgpt: $TRACK gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
+
     BRANCH=$DEVELOP
-    read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$FEATURE integration into upstream $BRANCH" --body "Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+    set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
+    set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.' 
+
+    read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
     RACECONDITIONWAIT # GH can take a little time to do the above...
     PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
     ECHO PR_NUMBER=$PR_NUMBER
@@ -981,7 +1035,9 @@ merge_pull_request(){
     $TRACK gh pr list --repo $USER_UPSTREAM/$PRJ_UPSTREAM
 
     # identify the pull request number, merge it.
-    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge
+    set_msg DEVELOP_MERGE_SUBJECT ''
+    set_msg DEVELOP_MERGE_BODY ''
+    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
 #    CD -
 }
 
@@ -996,9 +1052,14 @@ tag_and_release(){
     CO Tag and Release
     HEAD=$DEVELOP # from
     for BASE in $PIPELINE_UPSTREAM; do
-        read PR_URL <<< $($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$FEATURE integration into $BASE" --body "Integrating $FEATURE changes into $BASE." --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+        set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE' 
+        set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.' 
+
+        read PR_URL <<< "$($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
-        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge
+        set_msg RELEASE_MERGE_SUBJECT ''
+        set_msg RELEASE_MERGE_BODY ''
+        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
         HEAD=$BASE
     done
 
@@ -1022,8 +1083,11 @@ tag_and_release(){
         ;;
     esac
     echo RELEASE="$RELEASE"
+    set_msg RELEASE_TITLE 'Release $RELEASE' 
+    set_msg RELEASE_NOTES 'Initial release $RELEASE'
 
-    CO Create a GitHub release for the tag    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "Release $RELEASE" --notes "Initial release $RELEASE"
+    CO Create a GitHub release for the tag
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
      if [ -n "$major_minor_patch" ]; then
          RELEASE="$major_minor_patch"
          unset "$major_minor_patch"
@@ -1040,6 +1104,11 @@ setup(){
 feature(){
     $TRACK create_feature
     $TRACK add_feature
+}
+
+update_ts(){
+    $TRACK update_ts_feature
+    $TRACK merge_feature
 }
 
 update(){
@@ -1064,14 +1133,14 @@ base_test(){
     $TRACK setup
     $TRACK feature
     CD $PRJ_FEATURE
-    $TRACK update
+    $TRACK update_ts
     RELEASE=0.1.1 release
-    $TRACK update
-    $TRACK update
+    $TRACK update_ts
+    $TRACK update_ts
     RELEASE=+++ release
-    $TRACK update
-    $TRACK update
-    RELEASE=0.1.3 update release
+    $TRACK update_ts
+    $TRACK update_ts
+    RELEASE=0.1.3 update_ts release
 }
 
 public_test(){
@@ -1091,8 +1160,8 @@ fi
 
 if [ "$*" = "" ]; then
     # set -- PRJ_UPSTREAM=gh_hw_x init;
-    set -- PRJ_UPSTREAM=ghpl_test`date +"%H%M%S"` base_test
-    # set -- PRJ_UPSTREAM=ghpl_staging`date +"%H%M%S"` TESTING=testing STAGING=staging base_test
+    set -- PRJ_UPSTREAM=ghpl_test"$(date +"%H%M%S")" base_test
+    # set -- PRJ_UPSTREAM=ghpl_staging"$(date +"%H%M%S")" TESTING=testing STAGING=staging base_test
     cd .. # debugging ghstpipe in VSCode
 fi
 
@@ -1105,6 +1174,11 @@ while [ $# -gt 0 ]; do
     esac
     shift  # Move to the next argument
 done
+
+case "$1" in
+    (staging_test)STAGING=staging; TESTING=testing;;
+    (*)true;;
+esac
 
 set_env "$@"
 
