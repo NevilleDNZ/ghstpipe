@@ -7,6 +7,7 @@ set_env(){
     #: "${PRJ_UPSTREAM:=ghstpipe0}"
     #: "${PRJ_UPSTREAM:=gh_test0}"
     #: "${OPT_BASHDB:="--bashdb"}"
+    
     : "${OPT_BASHDB:=""}"
     : "${OPT_WEB_URL:=""}"
     : "${OPT_VERBOSITY:="-v"}"
@@ -1013,7 +1014,7 @@ create_pull_request(){
 
     BRANCH=$DEVELOP
     set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
-    set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.' 
+    set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.'
 
     read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
     RACECONDITIONWAIT # GH can take a little time to do the above...
@@ -1052,8 +1053,8 @@ tag_and_release(){
     CO Tag and Release
     HEAD=$DEVELOP # from
     for BASE in $PIPELINE_UPSTREAM; do
-        set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE' 
-        set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.' 
+        set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
+        set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.'
 
         read PR_URL <<< "$($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
@@ -1083,7 +1084,7 @@ tag_and_release(){
         ;;
     esac
     echo RELEASE="$RELEASE"
-    set_msg RELEASE_TITLE 'Release $RELEASE' 
+    set_msg RELEASE_TITLE 'Release $RELEASE'
     set_msg RELEASE_NOTES 'Initial release $RELEASE'
 
     CO Create a GitHub release for the tag
