@@ -212,7 +212,7 @@ You also need to generate a Github a Personal Authentication Token for each GitH
    - add_feature
 
  * update
-   - update_feature
+   - commit_feature
    - merge_feature
 
  * release
@@ -488,7 +488,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git commit -m 'Add a foundation shell script 0.1.0'
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164654 - 0.1.0'"
@@ -517,7 +517,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
     gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -534,7 +534,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164750 - 0.1.0'"
@@ -563,7 +563,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
     gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -580,7 +580,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164845 - 0.1.0'"
@@ -595,7 +595,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git pull
     git merge testing
     git push
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164853 - 0.1.3'"
@@ -648,7 +648,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git commit -m 'Add a foundation shell script 0.1.0'
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165105 - 0.1.0'"
@@ -671,7 +671,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
     gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -684,7 +684,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165150 - 0.1.0'"
@@ -707,7 +707,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
     gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -720,7 +720,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165235 - 0.1.0'"
@@ -731,7 +731,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git pull
     git merge feature/debut-src
     git push
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165240 - 0.1.3'"
@@ -1002,7 +1002,7 @@ update_ts_feature(){
 }
 
 HELP_update_feature="Update developer added feature"
-update_feature(){
+commit_feature(){
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
@@ -1180,7 +1180,7 @@ update_ts(){
 }
 
 update(){
-    $TRACK update_feature
+    $TRACK commit_feature
     $TRACK merge_feature
 }
 
