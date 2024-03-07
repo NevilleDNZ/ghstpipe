@@ -189,7 +189,7 @@ called \$PRJ_UPSTREAM
 Note: The project variables are to be stored in bash variables as follows:
 
     USER_UPSTREAM=YourGHLogin
-    USER_FEATURE="YourGHLogin$_DOWNSTREAM"
+    USER_FEATURE=YourGHLogin$_DOWNSTREAM
 
     PRJ_UPSTREAM=YourGHProgram
     PRJ_FEATURE=YourGHProgram$_DOWNSTREAM
@@ -199,6 +199,7 @@ Note: The project variables are to be stored in bash variables as follows:
 You probably need to update the script variables to reflect your GH name, and repo name etc..
 
 You also need to generate a Github a Personal Authentication Token for each GitHub account and store in PAT=$HOME/.ssh/gh_pat_$USER_UPSTREAM.oauth
+
 ### Options - these need to be performed in the given order.
 
  * setup
@@ -211,13 +212,13 @@ You also need to generate a Github a Personal Authentication Token for each GitH
    - add_feature
 
  * update
-   - update_feature
+   - commit_feature
    - merge_feature
 
  * release
-   - create_pull_request
-   - merge_pull_request
-   - tag_and_release
+   - create_fork_pull_request
+   - merge_fork_pull_request
+   - pr_merge_tag_and_release
 
  * init
    - setup
@@ -487,7 +488,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git commit -m 'Add a foundation shell script 0.1.0'
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164654 - 0.1.0'"
@@ -502,21 +503,21 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git pull
     git merge testing
     git push
-: create_pull_request
+: create_fork_pull_request
     gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
     gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
-: merge_pull_request
+: merge_fork_pull_request
     gh auth login --with-token
     gh pr list --repo NevilleDNZ/gh_staging0
     gh pr merge 1 --repo NevilleDNZ/gh_staging0 --merge
-: tag_and_release
+: pr_merge_tag_and_release
     gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
     gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
     gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -533,7 +534,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164750 - 0.1.0'"
@@ -548,21 +549,21 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git pull
     git merge testing
     git push
-: create_pull_request
+: create_fork_pull_request
     gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
     gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
-: merge_pull_request
+: merge_fork_pull_request
     gh auth login --with-token
     gh pr list --repo NevilleDNZ/gh_staging0
     gh pr merge 4 --repo NevilleDNZ/gh_staging0 --merge
-: tag_and_release
+: pr_merge_tag_and_release
     gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
     gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
     gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -579,7 +580,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164845 - 0.1.0'"
@@ -594,7 +595,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git pull
     git merge testing
     git push
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227164853 - 0.1.3'"
@@ -647,7 +648,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git commit -m 'Add a foundation shell script 0.1.0'
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165105 - 0.1.0'"
@@ -658,19 +659,19 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git pull
     git merge feature/debut-src
     git push
-: create_pull_request
+: create_fork_pull_request
     gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
     gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
-: merge_pull_request
+: merge_fork_pull_request
     gh auth login --with-token
     gh pr list --repo NevilleDNZ/gh_test0
     gh pr merge 1 --repo NevilleDNZ/gh_test0 --merge
-: tag_and_release
+: pr_merge_tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
     gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -683,7 +684,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165150 - 0.1.0'"
@@ -694,19 +695,19 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git pull
     git merge feature/debut-src
     git push
-: create_pull_request
+: create_fork_pull_request
     gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
     gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
-: merge_pull_request
+: merge_fork_pull_request
     gh auth login --with-token
     gh pr list --repo NevilleDNZ/gh_test0
     gh pr merge 3 --repo NevilleDNZ/gh_test0 --merge
-: tag_and_release
+: pr_merge_tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
     gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
-: update_feature
+: commit_feature
     gh auth login --with-token
     git checkout feature/debut-src
     git pull
@@ -719,7 +720,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : update
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165235 - 0.1.0'"
@@ -730,7 +731,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git pull
     git merge feature/debut-src
     git push
-: update_feature
+: commit_feature
     git checkout feature/debut-src
     git pull
     echo "echo 'Updated @ 20240227165240 - 0.1.3'"
@@ -1001,7 +1002,7 @@ update_ts_feature(){
 }
 
 HELP_update_feature="Update developer added feature"
-update_feature(){
+commit_feature(){
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
@@ -1037,8 +1038,8 @@ merge_feature(){
 
 }
 
-HELP_create_pull_request="Create pull request on USER_FEATURE's repo (using USER_FEATURE's token)"
-create_pull_request(){
+HELP_create_fork_pull_request="Create pull request on USER_FEATURE's repo for fork (using USER_FEATURE's token)"
+create_fork_pull_request(){
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
@@ -1058,8 +1059,8 @@ create_pull_request(){
     ECHO PR_NUMBER=$PR_NUMBER
 }
 
-HELP_merge_pull_request="Merge pull request on USER_UPSTREAM's repo (using USER_FEATURE's token)"
-merge_pull_request(){
+HELP_merge_fork_pull_request="Merge pull request on USER_UPSTREAM's repo from fork (using USER_FEATURE's token)"
+merge_fork_pull_request(){
 
     CO Switch back to $USER_UPSTREAM to merge the PR "(this step should ideally be done manually for review)"
     AUTH $USER_UPSTREAM_TOKEN
@@ -1080,15 +1081,14 @@ merge_pull_request(){
 #    CD -
 }
 
-HELP_tag_and_release="Tag and Release"
-tag_and_release(){
+HELP_upstream_pr_merge="Create upstream's PR and merge"
+upstream_pr_merge(){
 
     AUTH $USER_UPSTREAM_TOKEN
     CD $PRJ_FEATURE
 
     CO Merge $DEVELOP into $STAGING
     CO Merge $STAGING into $TRUNK
-    CO Tag and Release
     HEAD=$DEVELOP # from
     for BASE in $PIPELINE_UPSTREAM; do
         set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
@@ -1102,6 +1102,13 @@ tag_and_release(){
         PR_NUMBER=QQQ
         HEAD=$BASE
     done
+    # CD -
+}
+
+HELP_upstream_tag_and_release="Create upstream's Tag and Release"
+upstream_tag_and_release(){
+
+    CO Tag and Release
 
     case "$RELEASE" in
         (+|++|+++)
@@ -1122,25 +1129,39 @@ tag_and_release(){
             fi
         ;;
     esac
+
+    AUTH $USER_UPSTREAM_TOKEN
+    CD $PRJ_FEATURE
+
     echo RELEASE="$RELEASE"
     set_msg RELEASE_TITLE 'Release $RELEASE'
     set_msg RELEASE_NOTES 'Release $RELEASE'
 
     CO Create a GitHub release for the tag
-    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
-# on downstream
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
-# on upstream
     $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT
     $TRACK gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
-     if [ -n "$major_minor_patch" ]; then
-         RELEASE="$major_minor_patch"
-         unset "$major_minor_patch"
-     fi
+
+    AUTH $USER_FEATURE_TOKEN
+    CD $PRJ_FEATURE
+    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+# on downstream
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+# on upstream
+
+    if [ -n "$major_minor_patch" ]; then
+        RELEASE="$major_minor_patch"
+        unset "$major_minor_patch"
+    fi
 #    CD -
  }
+
+HELP_pr_merge_tag_and_release="Create upstream's PR, merge, Tag and Release"
+pr_merge_tag_and_release(){
+    $WATCH upstream_pr_merge
+    $WATCH upstream_tag_and_release
+}
 
 setup(){
     $TRACK create_local_releasing_repo
@@ -1159,14 +1180,14 @@ update_ts(){
 }
 
 update(){
-    $TRACK update_feature
+    $TRACK commit_feature
     $TRACK merge_feature
 }
 
 release(){
-    $TRACK create_pull_request
-    $TRACK merge_pull_request
-    $TRACK tag_and_release
+    $TRACK create_fork_pull_request
+    $TRACK merge_fork_pull_request
+    $TRACK pr_merge_tag_and_release
 }
 
 init(){
