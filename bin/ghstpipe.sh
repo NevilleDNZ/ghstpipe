@@ -10,7 +10,7 @@ set_env(){
     
     : "${OPT_BASHDB:=""}"
     : "${OPT_WEB_URL:=""}"
-    : "${OPT_VERBOSITY:="-v"}"
+    : "${OPT_VERBOSITY:="-v"}" # or -vv
     : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
     : "${OPT_INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
 
@@ -18,9 +18,9 @@ set_env(){
 # ToDo: maybe rename proc `release` to `merge_release`
 
     VEBOSE='^-v$'
-    VERY_VEBOSE='^-v+$'
+    VERY_VEBOSE='^-v+$' # or -vv
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
-    NL=$'\n'
+    NL=$'; \n'
 
     : "${COMMIT_MESSAGE:="feature commit"}"
     : "${MERGE_MESSAGE:="feature merge"}"
@@ -28,9 +28,11 @@ set_env(){
     if [ -n "$OPT_BASHDB" ]; then # VSCode debug
         WATCH="" TRACK=""
         WAIT="" # turn off tracing to allow VSCode bash-debug. BUT break at each WAIT
+        ECHO="echo"
     else
         WATCH="WATCH" TRACK="TRACK"
         WAIT="WAIT" # turn on wait
+        ECHO="ECHO"
     fi
 
     case "$PRJ_UPSTREAM" in
@@ -88,6 +90,24 @@ set_env(){
     PIPELINE_TAIL="$FEATURE $PIPELINE_FEATURE $PIPELINE_UPSTREAM"
     REV_PIPELINE_HEAD="$PREPROD $STAGING $DEVELOP $FULLTEST $TESTING $FEATURE"
 
+     : "${GIT_MERGE:=""}"
+#    git merge $GIT_MERGE # used to merge two or more development histories together. Here are some common options:
+#
+#    --no-ff: Performs a three-way merge, creating a merge commit even if the merge could be resolved as a fast-forward. This is useful for preserving the history of a feature branch.
+#    --ff: Allows the merge to be resolved as a fast-forward when possible. This is the default behavior but can be specified explicitly.
+#    --ff-only: Refuses to merge unless the current HEAD is already up-to-date or the merge can be resolved as a fast-forward.
+#    --squash: Combines all changes into a single commit on top of the base branch without creating a merge commit.
+#    --abort: Can be used to stop the merge process and try to go back to the pre-merge state if there are merge conflicts.
+
+     : "${DEVELOP_MERGE:=--merge}"
+     : "${GH_PR_MERGE:=--merge}"
+#    re: gh pr merge - This subcommand merges a pull request on GitHub.
+#    --auto: Enable auto-merge for the pull request.
+#    --admin: Use administrator privileges to merge a pull request that does not meet the base branch protection settings.
+#    --squash: Squash the commits into one commit before merging.
+#    --rebase: Rebase the commits on top of the base branch before merging.
+#    --merge: Use the merge commit strategy to merge the commits.
+
     # Get/Set GitHub Personal Access Tokens for $USER_UPSTREAM and $USER_FEATURE
 
     get_GH_PAT(){
@@ -134,7 +154,7 @@ set_msg(){
         (RELEASE_MERGE_SUBJECT) eval export $1='"$SUBJECT"';;
         (RELEASE_MERGE_BODY) eval export $1='"$BODY"';;
         (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $SUBJECT"';;
-        (RELEASE_NOTES) eval export $1='"Initial release $RELEASE $NL $BODY"';;
+        (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $BODY"';;
         (*)echo HUH | RAISE;;
     esac
 }
@@ -349,7 +369,7 @@ CD(){ # avoid dancing about the 2 directories...
     fi
 }
 
-INDENT="===="
+INDENT="++++"
 
 WATCH(){ # trace only, don't track errno in $?
     LN="$(caller | sed "s/ .*//")"
@@ -407,10 +427,20 @@ CO(){
 }
 
 AUTH(){
+    cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
-        $TRACK gh auth login --with-token <<< "$1"
-        RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+        for try in 1 2 3; do
+            if $WATCH gh auth login --with-token <<< "$1"; then
+                THIS_AUTH="$1"
+                return "$?"
+            else
+                $ECHO gh auth login --with-token
+                rc="$?"
+            fi
+            RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+        done
+        RAISE
         THIS_AUTH="$1"
     else
         return 0
@@ -484,7 +514,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Initial release 0.1.1'
+    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -530,7 +560,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
     gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
     gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Initial release 0.1.2'
+    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -638,7 +668,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Initial release 0.1.1'
+    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : update_feature
     gh auth login --with-token
@@ -674,7 +704,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
 : tag_and_release
     gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
     gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Initial release 0.1.2'
+    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : update_feature
     gh auth login --with-token
@@ -727,6 +757,7 @@ create_local_releasing_repo(){
     CD $PRJ_UPSTREAM
 
     $TRACK git init
+    $TRACK git config --local init.defaultBranch $DEVELOP
     $TRACK git checkout -b $TRUNK
     $TRACK git add .
     #$TRACK git commit -m "Commit (master/main) $TRUNK branch"
@@ -753,7 +784,7 @@ create_local_releasing_repo(){
 #    HEAD=$FEATURE
 #    for BASE in $PIPELINE_TAIL; do
 #         $WATCH git checkout $BASE
-#         $TRACK git merge $HEAD # does a merge need a commit?
+#         $TRACK git merge $GIT_MERGE $HEAD # does a merge need a commit?
 #         HEAD=$BASE
 #    done
     CD -
@@ -863,14 +894,14 @@ create_releasing_repo(){
         )
         ECHO COLL_ID=$COLL_ID
 
-        WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
+        #WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
     else
         ECHO This step must be done manually on GitHub if needed, esp if $PRJ_UPSTREAM is a $VISIBILITY project
         # ECHO VISIT: https://github.com/$USER_UPSTREAM/$PRJ_UPSTREAM/settings/access "[Settings => Collaborators]" then
         ECHO then LOGGED IN as $USER_FEATURE https://github.com/notifications, "[$USER_FEATURE => Mailbox => # => Accept invitation]"
         $WAIT
     fi
-    RACECONDITIONWAIT # GH can take a little time to do the above...
+    # RACECONDITIONWAIT # GH can take a little time to do the above...
 
     CD .. # because PWD got renamed with the `mv` above
 }
@@ -881,6 +912,10 @@ create_downstream_repo(){
     CO Switch to $USER_FEATURE and fork the repo
     AUTH $USER_FEATURE_TOKEN
     # CD $PRJ_UPSTREAM$_UPSTREAM
+
+    RACECONDITIONWAIT # GH can take a little time to do the above...
+    WATCH gh api -X PATCH /user/repository_invitations/$COLL_ID
+    RACECONDITIONWAIT # GH can take a little time to do the above...
 
     CO Rename $USER_FEATURE forked repo
     if [ $PRJ_UPSTREAM != $PRJ_FEATURE ]; then
@@ -904,7 +939,6 @@ create_downstream_repo(){
 
         fi
     else
-        #$TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone=false
         $TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone
         RACECONDITIONWAIT # GH can take a little time to do the FORK...
     fi
@@ -925,6 +959,8 @@ create_feature(){
 
     CO Create feature branch $FEATURE and add Python script
     $WATCH git checkout -b $FEATURE
+    $TRACK gh api -X PATCH /repos/$USER_FEATURE/$PRJ_FEATURE -f default_branch=$FEATURE
+    $TRACK git config --local init.defaultBranch $FEATURE # avoid commits to TRUNK
 #    CD -
 }
 
@@ -992,8 +1028,8 @@ merge_feature(){
         $TRACK git pull # with default # origin $BASE # get any updates
 
         CO Merge $HEAD into $BASE
-        #$TRACK git merge $HEAD # WARNING: merge conflicts appear here.
-        $TRACK git merge -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        #$TRACK git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
+        $TRACK git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
         $TRACK git push # with default # origin $BASE
         HEAD=$BASE
     done
@@ -1030,15 +1066,17 @@ merge_pull_request(){
     CD $PRJ_FEATURE
 
     CO Assuming PR number is known or retrieved via script, it would be merged like so:
-    # gh pr merge <PR_NUMBER> --merge
+    # gh pr merge <PR_NUMBER> $GH_PR_MERGE
 
     CO List pull requests for $USER_UPSTREAM repo
-    $TRACK gh pr list --repo $USER_UPSTREAM/$PRJ_UPSTREAM
+    $WATCH gh pr list --repo $USER_UPSTREAM/$PRJ_UPSTREAM
 
     # identify the pull request number, merge it.
     set_msg DEVELOP_MERGE_SUBJECT ''
     set_msg DEVELOP_MERGE_BODY ''
-    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
+    RACECONDITIONWAIT # GH can take a little time to do the above...
+    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $DEVELOP_MERGE --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
+    PR_NUMBER=qqq
 #    CD -
 }
 
@@ -1060,7 +1098,8 @@ tag_and_release(){
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
         set_msg RELEASE_MERGE_SUBJECT ''
         set_msg RELEASE_MERGE_BODY ''
-        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --merge --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
+        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $GH_PR_MERGE --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
+        PR_NUMBER=QQQ
         HEAD=$BASE
     done
 
@@ -1085,10 +1124,17 @@ tag_and_release(){
     esac
     echo RELEASE="$RELEASE"
     set_msg RELEASE_TITLE 'Release $RELEASE'
-    set_msg RELEASE_NOTES 'Initial release $RELEASE'
+    set_msg RELEASE_NOTES 'Release $RELEASE'
 
     CO Create a GitHub release for the tag
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE" --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+# on downstream
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+# on upstream
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    RACECONDITIONWAIT
+    $TRACK gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
      if [ -n "$major_minor_patch" ]; then
          RELEASE="$major_minor_patch"
          unset "$major_minor_patch"
