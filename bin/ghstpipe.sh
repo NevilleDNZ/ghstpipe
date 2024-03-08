@@ -6,13 +6,16 @@ set_env(){
 
     #: "${PRJ_UPSTREAM:=ghstpipe0}"
     #: "${PRJ_UPSTREAM:=gh_test0}"
-    #: "${OPT_BASHDB:="--bashdb"}"
+    #: "${__BASHDB:="--bashdb"}"
+
+    : "${__WRAP_UPSTREAM:=""}" # Pull an existing upstream repo and wrap it in a pipeline locally, then push
+    : "${__WRAP_LOCAL:=""}" # Take an existing local repo and wrap it in a pipeline, and push upstream
     
-    : "${OPT_BASHDB:=""}"
-    : "${OPT_WEB_URL:=""}"
-    : "${OPT_VERBOSITY:="-v"}" # or -vv
-    : "${OPT_DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
-    : "${OPT_INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
+    : "${__BASHDB:=""}"
+    : "${__WEB_URL:=""}"
+    : "${__VERBOSITY:="-v"}" # or -vv
+    : "${__DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
+    : "${__INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
 
 # ToDo: maybe rename proc `update` to `merge_develop`
 # ToDo: maybe rename proc `release` to `merge_release`
@@ -25,7 +28,7 @@ set_env(){
     : "${COMMIT_MESSAGE:="feature commit"}"
     : "${MERGE_MESSAGE:="feature merge"}"
 
-    if [ -n "$OPT_BASHDB" ]; then # VSCode debug
+    if [ -n "$__BASHDB" ]; then # VSCode debug
         WATCH="" TRACK=""
         WAIT="" # turn off tracing to allow VSCode bash-debug. BUT break at each WAIT
         ECHO="echo"
@@ -57,7 +60,7 @@ set_env(){
     : "${_UPSTREAM:="-upstream"}"
     : "${_DOWNSTREAM:="-downstream"}"
 
-    if [ -z "$PRJ_UPSTREAM" ]; then
+    if [ ! -n "$PRJ_UPSTREAM" ]; then
         read PRJ_UPSTREAM <<< $(git remote -v | ( read origin path method; expr "$path" : ".*/\(.*\)$_DOWNSTREAM"))
         : "${PRJ_UPSTREAM:=gh_hw0}"
     fi
@@ -375,7 +378,7 @@ INDENT="++++"
 WATCH(){ # trace only, don't track errno in $?
     LN="$(caller | sed "s/ .*//")"
     cmd="$*"
-    [[ "$OPT_VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
+    [[ "$__VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
     "$@" # || RAISE
 }
 
@@ -384,11 +387,11 @@ TRACK(){
     cmd="$*"
     case "$skip" in
         ("")
-            [[ "$OPT_VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
+            [[ "$__VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
             "$@" || RAISE
         ;;
         (*)
-            [[ "$OPT_VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
+            [[ "$__VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
         ;;
     esac
 }
@@ -421,7 +424,7 @@ RACECONDITIONWAIT(){ # A total HACK ;-)
 }
 
 CO(){
-    if [[ "$OPT_VERBOSITY" =~ $VERBOSE ]]; then
+    if [[ "$__VERBOSITY" =~ $VERBOSE ]]; then
         echo
         echo "# $@"
     fi
@@ -757,9 +760,14 @@ create_local_releasing_repo(){
     $WATCH mkdir -p $PRJ_UPSTREAM
     CD $PRJ_UPSTREAM
 
-    $TRACK git init
+    if [ -n "$__WRAP_UPSTREAM" ]; then
+        $TRACK gh repo clone $USER_UPSTREAM/$PRJ_UPSTREAM .
+        $TRACK git fetch --all --tags
+    else
+        $TRACK git init
+    fi
     $TRACK git config --local init.defaultBranch $DEVELOP
-    $TRACK git checkout -b $TRUNK
+    $WATCH git checkout -b $TRUNK
     $TRACK git add .
     #$TRACK git commit -m "Commit (master/main) $TRUNK branch"
     # $WATCH git checkout $TRUNK # ignore initial error, for now!
@@ -872,10 +880,13 @@ create_releasing_repo(){
     AUTH $USER_UPSTREAM_TOKEN
     CD $PRJ_UPSTREAM
 
-    CO Create repo on GitHub under $USER_UPSTREAM
-    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
-    $TRACK gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
-    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+    if [ -z "$__WRAP_UPSTREAM" ]; then
+        CO Create repo on GitHub under $USER_UPSTREAM
+        RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+        $TRACK gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
+        RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+    fi
+    
 
     $TRACK git push --all
 
@@ -888,7 +899,12 @@ create_releasing_repo(){
 
     CO $USER_FEATURE MUST accept via notifications.
 
-    if [ -z "$OPT_WEB_URL" ]; then
+    if [ -n "$__WEB_URL" ]; then
+        ECHO This step must be done manually on GitHub if needed, esp if $PRJ_UPSTREAM is a $VISIBILITY project
+        # ECHO VISIT: https://github.com/$USER_UPSTREAM/$PRJ_UPSTREAM/settings/access "[Settings => Collaborators]" then
+        ECHO then LOGGED IN as $USER_FEATURE https://github.com/notifications, "[$USER_FEATURE => Mailbox => # => Accept invitation]"
+        $WAIT
+    else
         read COLL_ID <<< $(
         WATCH echo '{"permission":"read"}' |
             TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
@@ -896,11 +912,6 @@ create_releasing_repo(){
         ECHO COLL_ID=$COLL_ID
 
         #WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
-    else
-        ECHO This step must be done manually on GitHub if needed, esp if $PRJ_UPSTREAM is a $VISIBILITY project
-        # ECHO VISIT: https://github.com/$USER_UPSTREAM/$PRJ_UPSTREAM/settings/access "[Settings => Collaborators]" then
-        ECHO then LOGGED IN as $USER_FEATURE https://github.com/notifications, "[$USER_FEATURE => Mailbox => # => Accept invitation]"
-        $WAIT
     fi
     # RACECONDITIONWAIT # GH can take a little time to do the above...
 
@@ -920,7 +931,7 @@ create_downstream_repo(){
 
     CO Rename $USER_FEATURE forked repo
     if [ $PRJ_UPSTREAM != $PRJ_FEATURE ]; then
-        if [ -n "$OPT_WEB_URL" ]; then
+        if [ -n "$__WEB_URL" ]; then
             CO Rename $USER_FEATURE forked repo "(this feature is not supported by gh yet)"
             CO This step must be done manually on GitHub if needed.
             ECHO VISIT https://github.com/$USER_UPSTREAM$_DOWNSTREAM/$PRJ_UPSTREAM/settings
