@@ -889,6 +889,7 @@ create_releasing_repo(){
     
 
     $TRACK git push --all
+    $TRACK gh repo edit $USER_UPSTREAM/$PRJ_UPSTREAM --default-branch $TRUNK
 
     # if [ $PRJ_UPSTREAM = $PRJ_FEATURE ]; then # nee_DOWNSTREAM to be moved aside for $_DOWNSTREAM
         $TRACK mv ../$PRJ_UPSTREAM ../$PRJ_UPSTREAM$_UPSTREAM
