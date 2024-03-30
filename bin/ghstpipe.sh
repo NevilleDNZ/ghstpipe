@@ -16,6 +16,7 @@ set_env(){
     : "${__VERBOSITY:="-v"}" # or -vv
     : "${__DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
     : "${__INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
+    : "${__COMMIT_ALL_DOWNSTREAM:="TrUe"}" # Commit ALL to DS, even the PR's to US - preserves filemod times in DS
 
 # ToDo: maybe rename proc `update` to `merge_develop`
 # ToDo: maybe rename proc `release` to `merge_release`
@@ -92,6 +93,11 @@ set_env(){
     PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from DEVELOP
     PIPELINE_TAIL="$FEATURE $PIPELINE_FEATURE $PIPELINE_UPSTREAM"
     REV_PIPELINE_HEAD="$PREPROD $STAGING $DEVELOP $FULLTEST $TESTING $FEATURE"
+
+    if [ -n "$__COMMIT_ALL_DOWNSTREAM" ]; then
+        PIPELINE_FEATURE="$PIPELINE_TAIL" # from FEATURE
+        PIPELINE_UPSTREAM="" # from DEVELOP
+    fi 
 
      : "${GIT_MERGE:=""}"
 #    git merge $GIT_MERGE # used to merge two or more development histories together. Here are some common options:
