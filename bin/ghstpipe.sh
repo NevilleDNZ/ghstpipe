@@ -423,10 +423,14 @@ WAIT(){
 RACECONDITIONWAIT(){ # A total HACK ;-)
     # GH can take a little time to do the above...
     if [ -n "$1" ]; then
-        sleep $1
+        sleep=$1
     else
-        sleep 12 # 6 seconds is too fast sometimes
+        sleep=12 # 6 seconds is too fast sometimes
     fi
+    for((i=sleep; sleep; sleep--)); do
+        echo -n $sleep.; sleep 1
+    done
+    echo ..
 }
 
 CO(){
@@ -440,16 +444,22 @@ AUTH(){
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
-        for try in 1 2 3; do
+        d="0"
+        for try in 1 2 3 4 5 6; do
+            RACECONDITIONWAIT $d # GH can take a little time to do the above...
+            d=6
+            #echo PW="$1"
             if $WATCH gh auth login --with-token <<< "$1"; then
+                rc="$?"
                 THIS_AUTH="$1"
-                return "$?"
+                echo AUTH: SUCCESS
+                return "$rc"
             else
                 $ECHO gh auth login --with-token
                 rc="$?"
             fi
-            RACECONDITIONWAIT 6 # GH can take a little time to do the above...
         done
+        set -x
         RAISE
         THIS_AUTH="$1"
     else
@@ -912,10 +922,13 @@ create_releasing_repo(){
         ECHO then LOGGED IN as $USER_FEATURE https://github.com/notifications, "[$USER_FEATURE => Mailbox => # => Accept invitation]"
         $WAIT
     else
-        read COLL_ID <<< $(
-        WATCH echo '{"permission":"read"}' |
-            TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
-        )
+        #read COLL_ID <<< $(
+        #WATCH echo '{"permission":"read"}' |
+        #    TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
+        #)
+        RACECONDITIONWAIT # GH can take a little time to do the above...
+        cmd="gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq .id --input -"
+        COLL_ID=$( TRACK $cmd <<< '{"permission":"read"}')  || RAISE $cmd
         ECHO COLL_ID=$COLL_ID
 
         #WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
