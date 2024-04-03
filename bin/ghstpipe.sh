@@ -30,11 +30,11 @@ set_env(){
     : "${MERGE_MESSAGE:="feature merge"}"
 
     if [ -n "$__BASHDB" ]; then # VSCode debug
-        WATCH="" TRACK=""
+        WATCH="" ASSERT=""
         WAIT="" # turn off tracing to allow VSCode bash-debug. BUT break at each WAIT
         ECHO="echo"
     else
-        WATCH="WATCH" TRACK="TRACK"
+        WATCH="WATCH" ASSERT="ASSERT"
         WAIT="WAIT" # turn on wait
         ECHO="ECHO"
     fi
@@ -388,7 +388,7 @@ WATCH(){ # trace only, don't track errno in $?
     "$@" # || RAISE
 }
 
-TRACK(){
+ASSERT(){
     LN="$(caller | sed "s/ .*//")"
     cmd="$*"
     case "$skip" in
@@ -776,15 +776,15 @@ create_local_releasing_repo(){
     CD $PRJ_UPSTREAM
 
     if [ -n "$__WRAP_UPSTREAM" ]; then
-        $TRACK gh repo clone $USER_UPSTREAM/$PRJ_UPSTREAM .
-        $TRACK git fetch --all --tags
+        $ASSERT gh repo clone $USER_UPSTREAM/$PRJ_UPSTREAM .
+        $ASSERT git fetch --all --tags
     else
-        $TRACK git init
+        $ASSERT git init
     fi
-    $TRACK git config --local init.defaultBranch $DEVELOP
+    $ASSERT git config --local init.defaultBranch $DEVELOP
     $WATCH git checkout -b $TRUNK
-    $TRACK git add .
-    #$TRACK git commit -m "Commit (master/main) $TRUNK branch"
+    $ASSERT git add .
+    #$ASSERT git commit -m "Commit (master/main) $TRUNK branch"
     # $WATCH git checkout $TRUNK # ignore initial error, for now!
     # git add README.md; git commit -m "first commit"; git branch -M trunk; git remote add origin https://github.com/ABCDev/gh_hw0.git; git push -u origin trunk
 
@@ -792,13 +792,13 @@ create_local_releasing_repo(){
     echo "# $TITLE" > README.md
     echo "" >> README.md
     echo "Under Construction" >> README.md
-    $TRACK git add README.md
-    $TRACK git commit -m "Add README.md with under construction message"
+    $ASSERT git add README.md
+    $ASSERT git commit -m "Add README.md with under construction message"
 
     CO Create branches as specified
     HEAD=$TRUNK
     for BASE in $REV_PIPELINE_HEAD; do
-         $TRACK git checkout -b $BASE $HEAD
+         $ASSERT git checkout -b $BASE $HEAD
          HEAD=$BASE
     done
 
@@ -808,7 +808,7 @@ create_local_releasing_repo(){
 #    HEAD=$FEATURE
 #    for BASE in $PIPELINE_TAIL; do
 #         $WATCH git checkout $BASE
-#         $TRACK git merge $GIT_MERGE $HEAD # does a merge need a commit?
+#         $ASSERT git merge $GIT_MERGE $HEAD # does a merge need a commit?
 #         HEAD=$BASE
 #    done
     CD -
@@ -898,17 +898,17 @@ create_releasing_repo(){
     if [ -z "$__WRAP_UPSTREAM" ]; then
         CO Create repo on GitHub under $USER_UPSTREAM
         RACECONDITIONWAIT 6 # GH can take a little time to do the above...
-        $TRACK gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
+        $ASSERT gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
         RACECONDITIONWAIT 6 # GH can take a little time to do the above...
     fi
     
 
-    $TRACK git push --all
-    $TRACK gh repo edit $USER_UPSTREAM/$PRJ_UPSTREAM --default-branch $TRUNK
+    $ASSERT git push --all
+    $ASSERT gh repo edit $USER_UPSTREAM/$PRJ_UPSTREAM --default-branch $TRUNK
 
     # if [ $PRJ_UPSTREAM = $PRJ_FEATURE ]; then # nee_DOWNSTREAM to be moved aside for $_DOWNSTREAM
-        $TRACK mv ../$PRJ_UPSTREAM ../$PRJ_UPSTREAM$_UPSTREAM
-        $TRACK mkdir -p ../$PRJ_FEATURE
+        $ASSERT mv ../$PRJ_UPSTREAM ../$PRJ_UPSTREAM$_UPSTREAM
+        $ASSERT mkdir -p ../$PRJ_FEATURE
     # fi
 
     CO Grant $USER_FEATURE fork rights "(handled via GitHub settings, not scriptable via gh CLI)"
@@ -923,11 +923,11 @@ create_releasing_repo(){
     else
         #read COLL_ID <<< $(
         #WATCH echo '{"permission":"read"}' |
-        #    TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
+        #    ASSERT gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
         #)
         RACECONDITIONWAIT # GH can take a little time to do the above...
         cmd="gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq .id --input -"
-        COLL_ID=$( TRACK $cmd <<< '{"permission":"read"}')  || RAISE $cmd
+        COLL_ID=$( ASSERT $cmd <<< '{"permission":"read"}')  || RAISE $cmd
         ECHO COLL_ID=$COLL_ID
 
         #WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
@@ -957,12 +957,12 @@ create_downstream_repo(){
             ECHO ACTION manually rename $PRJ_UPSTREAM to $PRJ_FEATURE
             $WAIT
         else
-        #$TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone=false --fork-name $PRJ_FEATURE
-            $TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --fork-name $PRJ_FEATURE --clone
-        # $TRACK gh repo rename $USER_FEATURE/$PRJ_UPSTREAM $PRJ_FEATURE || RAISE
+        #$ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone=false --fork-name $PRJ_FEATURE
+            $ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --fork-name $PRJ_FEATURE --clone
+        # $ASSERT gh repo rename $USER_FEATURE/$PRJ_UPSTREAM $PRJ_FEATURE || RAISE
             RACECONDITIONWAIT # GH can take a little time to do the FORK...
             CD $PRJ_FEATURE
-            $TRACK git config --local checkout.defaultRemote origin # because fork creates both upstream and origin
+            $ASSERT git config --local checkout.defaultRemote origin # because fork creates both upstream and origin
 # origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (fetch)
 # origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (push)
 # upstream	https://github.com/ABCDev/gh_staging0.git (fetch)
@@ -970,14 +970,14 @@ create_downstream_repo(){
 
         fi
     else
-        $TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone
+        $ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone
         RACECONDITIONWAIT # GH can take a little time to do the FORK...
     fi
 
     CO Clone $USER_FEATURE forked repo
     # CD ..
-    # $TRACK git clone https://github.com/$USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
-    # or: $TRACK gh repo clone $USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
+    # $ASSERT git clone https://github.com/$USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
+    # or: $ASSERT gh repo clone $USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
     # CD $PRJ_FEATURE
 #    CD -
 }
@@ -990,8 +990,8 @@ create_feature(){
 
     CO Create feature branch $FEATURE and add Python script
     $WATCH git checkout -b $FEATURE
-    $TRACK gh api -X PATCH /repos/$USER_FEATURE/$PRJ_FEATURE -f default_branch=$FEATURE
-    $TRACK git config --local init.defaultBranch $FEATURE # avoid commits to TRUNK
+    $ASSERT gh api -X PATCH /repos/$USER_FEATURE/$PRJ_FEATURE -f default_branch=$FEATURE
+    $ASSERT git config --local init.defaultBranch $FEATURE # avoid commits to TRUNK
 #    CD -
 }
 
@@ -1001,18 +1001,18 @@ add_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     $WATCH mkdir -p bin
     $WATCH echo "echo 'hello, world! $RELEASE'" > bin/$APP
-    $TRACK chmod ug+x bin/$APP
-    $TRACK git add bin/$APP
-    $TRACK git commit -m "Add a foundation shell script"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT chmod ug+x bin/$APP
+    $ASSERT git add bin/$APP
+    $ASSERT git commit -m "Add a foundation shell script"
+    $ASSERT git push # with default # origin $FEATURE
 
     # CO Add another line to the script
     # $WATCH echo "echo 'Goodbye Cruel World!'" >> bin/$APP
-    # $TRACK git commit -am "Update $APP with goodbye message"
+    # $ASSERT git commit -am "Update $APP with goodbye message"
 #    CD -
 }
 
@@ -1022,12 +1022,12 @@ update_ts_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK echo "echo 'Updated @ "$(date +"%Y%m%d%H%M%S")" - $RELEASE'" > bin/$APP
-    $TRACK git commit -am "Update $APP with $FEATURE timestamp"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT echo "echo 'Updated @ "$(date +"%Y%m%d%H%M%S")" - $RELEASE'" > bin/$APP
+    $ASSERT git commit -am "Update $APP with $FEATURE timestamp"
+    $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
 
@@ -1037,11 +1037,11 @@ commit_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK git commit -am "$COMMIT_MESSAGE"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT git commit -am "$COMMIT_MESSAGE"
+    $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
 
@@ -1056,12 +1056,12 @@ merge_feature(){
         CO Switch to $BASE and sync
         # $WATCH git checkout -b $BASE origin/$BASE
         $WATCH git checkout $BASE
-        $TRACK git pull # with default # origin $BASE # get any updates
+        $ASSERT git pull # with default # origin $BASE # get any updates
 
         CO Merge $HEAD into $BASE
-        #$TRACK git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
-        $TRACK git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
-        $TRACK git push # with default # origin $BASE
+        #$ASSERT git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git push # with default # origin $BASE
         HEAD=$BASE
     done
 #    CD -
@@ -1074,19 +1074,20 @@ create_fork_pull_request(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
 
-    $TRACK gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
+    $ASSERT gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
     RACECONDITIONWAIT # GH can take a little time to do the above...
 
-    # chatgpt: $TRACK gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
+    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
 
     BRANCH=$DEVELOP
     set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
     set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.'
 
-    read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+    read PR_URL <<< $($ASSERT gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
     RACECONDITIONWAIT # GH can take a little time to do the above...
-    PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
+    read PR_NUMBER <<< $(echo $PR_URL | grep -o '[^/]*$')
     ECHO PR_NUMBER=$PR_NUMBER
+    test "$PR_NUMBER" != "" || RAISE
 }
 
 HELP_merge_fork_pull_request="Merge pull request on USER_UPSTREAM's repo from fork (using USER_FEATURE's token)"
@@ -1106,7 +1107,7 @@ merge_fork_pull_request(){
     set_msg DEVELOP_MERGE_SUBJECT ''
     set_msg DEVELOP_MERGE_BODY ''
     RACECONDITIONWAIT # GH can take a little time to do the above...
-    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $DEVELOP_MERGE --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
+    $ASSERT gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $DEVELOP_MERGE --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
     PR_NUMBER=qqq
 #    CD -
 }
@@ -1124,11 +1125,11 @@ upstream_pr_merge(){
         set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
         set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.'
 
-        read PR_URL <<< "$($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
+        read PR_URL <<< "$($ASSERT gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
         set_msg RELEASE_MERGE_SUBJECT ''
         set_msg RELEASE_MERGE_BODY ''
-        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $GH_PR_MERGE --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
+        $ASSERT gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $GH_PR_MERGE --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
         PR_NUMBER=QQQ
         HEAD=$BASE
     done
@@ -1170,16 +1171,16 @@ upstream_tag_and_release(){
     set_msg RELEASE_NOTES 'Release $RELEASE'
 
     CO Create a GitHub release for the tag
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 # on downstream
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
 # on upstream
 
     if [ -n "$major_minor_patch" ]; then
@@ -1196,50 +1197,50 @@ pr_merge_tag_and_release(){
 }
 
 setup(){
-    $TRACK create_local_releasing_repo
-    $TRACK create_releasing_repo
-    $TRACK create_downstream_repo
+    $ASSERT create_local_releasing_repo
+    $ASSERT create_releasing_repo
+    $ASSERT create_downstream_repo
 }
 
 feature(){
-    $TRACK create_feature
-    $TRACK add_feature
+    $ASSERT create_feature
+    $ASSERT add_feature
 }
 
 update_ts(){
-    $TRACK update_ts_feature
-    $TRACK merge_feature
+    $ASSERT update_ts_feature
+    $ASSERT merge_feature
 }
 
 update(){
-    $TRACK commit_feature
-    $TRACK merge_feature
+    $ASSERT commit_feature
+    $ASSERT merge_feature
 }
 
 release(){
-    $TRACK create_fork_pull_request
-    $TRACK merge_fork_pull_request
-    $TRACK pr_merge_tag_and_release
+    $ASSERT create_fork_pull_request
+    $ASSERT merge_fork_pull_request
+    $ASSERT pr_merge_tag_and_release
 }
 
 init(){
-    $TRACK setup
-    $TRACK feature
-    $TRACK update
-    $TRACK release
+    $ASSERT setup
+    $ASSERT feature
+    $ASSERT update
+    $ASSERT release
 }
 
 base_test(){
-    $TRACK setup
-    $TRACK feature
+    $ASSERT setup
+    $ASSERT feature
     CD $PRJ_FEATURE
-    $TRACK update_ts
+    $ASSERT update_ts
     RELEASE=0.1.1 release
-    $TRACK update_ts
-    $TRACK update_ts
+    $ASSERT update_ts
+    $ASSERT update_ts
     RELEASE=+++ release
-    $TRACK update_ts
-    $TRACK update_ts
+    $ASSERT update_ts
+    $ASSERT update_ts
     RELEASE=0.1.3 update_ts release
 }
 
@@ -1286,7 +1287,7 @@ while [ $# -gt 0 ]; do
 #    CO "Processing argument: $1"
     case "$1" in
         (*=*)eval "$1";;
-        (*) $TRACK "$1";;
+        (*) $ASSERT "$1";;
     esac
     shift  # Move to the next argument
 done
