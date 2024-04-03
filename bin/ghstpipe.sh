@@ -444,20 +444,19 @@ AUTH(){
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
-        d="0"
         for try in 1 2 3 4 5 6; do
-            RACECONDITIONWAIT $d # GH can take a little time to do the above...
-            d=6
             #echo PW="$1"
             if $WATCH gh auth login --with-token <<< "$1"; then
                 rc="$?"
                 THIS_AUTH="$1"
                 echo AUTH: SUCCESS
+                RACECONDITIONWAIT 6 # GH can take a little time to do the above...
                 return "$rc"
             else
                 $ECHO gh auth login --with-token
                 rc="$?"
             fi
+            RACECONDITIONWAIT 6 # GH can take a little time to do the above...
         done
         set -x
         RAISE
