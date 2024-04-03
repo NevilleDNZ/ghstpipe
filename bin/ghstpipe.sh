@@ -24,10 +24,7 @@ set_env(){
     VEBOSE='^-v$'
     VERY_VEBOSE='^-v+$' # or -vv
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
-    NL=$'; \n'
-
-    : "${COMMIT_MESSAGE:="feature commit"}"
-    : "${MERGE_MESSAGE:="feature merge"}"
+    NL=$'; \n'"
 
     if [ -n "$__BASHDB" ]; then # VSCode debug
         WATCH="" ASSERT=""
@@ -76,14 +73,30 @@ set_env(){
     #: "${RELEASE_PREFIX:=release/}" # needed to uncloak releases to git from github
     : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-(
     : "${FEATURE_PREFIX:=feature/}"
-
-    : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
+    if [ -z "$FEATURE" ]; then # allow for alternate branches, esp hotfix/*
+        read CURRENT <<<$(git branch --show-current) 2> /dev/null
+        rc="$?"
+        case "$rc" in
+            (0) if [[ "$f" =~ (hotfix/.+|feature/.+) ]]; then
+                    "${FEATURE:=${CURRENT}"
+                else
+                    echo "$0: You are in the wrong branch '$CURRENT', try one of" 1>&2
+                    git branch 
+                    exit "$rc"
+                fi
+            ;;
+            (*) :"${FEATURE:=${FEATURE_PREFIX}debut-src}";;
+        esac
+    fi
     : "${TESTING:=}" # alt2
     : "${FULLTEST:=}" # alt3
     : "${BETA:=develop}"
     : "${STAGING:=}" # alt5
     : "${PREPROD:=}" # alt6
     : "${TRUNK=trunk}"
+
+    : "${COMMIT_MESSAGE:="$FEATURE commit"}"
+    : "${MERGE_MESSAGE:="$FEATURE merge"}
 
     # cf. https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility#changing-a-private-repository-to-a-public-repository
     : "${VISIBILITY:=private}"
@@ -163,8 +176,8 @@ set_msg(){
         (RELEASE_PR_BODY) eval export $1='"Integrating $FEATURE changes into $BASE $NL $BODY"';;
         (RELEASE_MERGE_SUBJECT) eval export $1='"$SUBJECT"';;
         (RELEASE_MERGE_BODY) eval export $1='"$BODY"';;
-        (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $SUBJECT"';;
-        (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $BODY"';;
+        (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $FEATURE/$SUBJECT"';;
+        (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $FEATURE/$BODY"';;
         (*)echo HUH | RAISE;;
     esac
 }
@@ -1041,7 +1054,7 @@ commit_feature(){
     $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $ASSERT git commit -am "$COMMIT_MESSAGE"
+    $ASSERT git commit -am "$FEATURE commit" # "$COMMIT_MESSAGE"
     $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
@@ -1061,7 +1074,8 @@ merge_feature(){
 
         CO Merge $HEAD into $BASE
         #$ASSERT git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
-        $ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        #$ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git merge $GIT_MERGE -m "$HEAD => $BASE merge"  $HEAD # WARNING: merge conflicts appear here.
         $ASSERT git push # with default # origin $BASE
         HEAD=$BASE
     done
