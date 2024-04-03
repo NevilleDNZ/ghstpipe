@@ -73,7 +73,9 @@ set_env(){
     #: "${RELEASE_PREFIX:=release/}" # needed to uncloak releases to git from github
     : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-/
     : "${FEATURE_PREFIX:=feature/}"
-    if [ -z "$FEATURE" ]; then # allow for alternate branches, esp hotfix/*
+    if [[ " $* " == *" init "* ]]; then
+        : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
+    else
         read CURRENT <<<$(git branch --show-current) 2> /dev/null
         rc="$?"
         case "$rc" in
@@ -99,7 +101,7 @@ set_env(){
     : "${MERGE_MESSAGE:="$FEATURE merge"}"  
 
     # cf. https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility#changing-a-private-repository-to-a-public-repository
-    : "${VISIBILITY:=private}"
+    #: "${VISIBILITY:=private}"
     : "${VISIBILITY:=public}"
 
     PIPELINE_FEATURE="$TESTING $FULLTEST $BETA" # from FEATURE
@@ -422,8 +424,8 @@ RAISE(){
     errno="$?"
     LN="$(caller 1 | sed "s/ .*//")"
     case "$#" in
-        (0) echo_Q RAISED:$LN/$errno: "$cmd" 1>&2;;
-        (*) echo_Q RAISED:$LN/$errno: "$@" 1>&2;;
+        (0) echo_Q EXCEPTION:$LN/$errno: "$cmd" 1>&2;;
+        (*) echo_Q EXCEPTION:$LN/$errno: "$@" 1>&2;;
     esac
     exit "$errno"
 }
