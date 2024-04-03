@@ -176,8 +176,10 @@ set_msg(){
         (RELEASE_PR_BODY) eval export $1='"Integrating $FEATURE changes into $BASE $NL $BODY"';;
         (RELEASE_MERGE_SUBJECT) eval export $1='"$SUBJECT"';;
         (RELEASE_MERGE_BODY) eval export $1='"$BODY"';;
-        (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $FEATURE/$SUBJECT"';;
-        (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $FEATURE/$BODY"';;
+        (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $SUBJECT"';;
+        (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $BODY"';;
+        (BETA_RELEASE_TITLE) eval export $1='"Beta Release $RELEASE-beta $NL $SUBJECT"';;
+        (BETA_RELEASE_NOTES) eval export $1='"Beta Release $RELEASE-beta $NL $BODY"';;
         (*)echo HUH | RAISE;;
     esac
 }
@@ -1184,9 +1186,11 @@ upstream_tag_and_release(){
     echo RELEASE="$RELEASE"
     set_msg RELEASE_TITLE 'Release $RELEASE'
     set_msg RELEASE_NOTES 'Release $RELEASE'
+    set_msg BETA_RELEASE_TITLE 'Release $RELEASE-beta'
+    set_msg BETA_RELEASE_NOTES 'Release $RELEASE-beta'
 
     CO Create a GitHub release for the tag
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$BETA_RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
     RACECONDITIONWAIT
     $ASSERT gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
@@ -1195,7 +1199,7 @@ upstream_tag_and_release(){
     CD $PRJ_FEATURE
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 # on downstream
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_FEATURE/$PRJ_FEATURE --title "$BETA_RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
 # on upstream
 
     if [ -n "$major_minor_patch" ]; then
