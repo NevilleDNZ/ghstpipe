@@ -1,4 +1,5 @@
 #!/bin/bash
+code . $(find * .github -type f )
 
 help(){
      man <(cat << eof
