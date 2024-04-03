@@ -73,7 +73,7 @@ set_env(){
     #: "${RELEASE_PREFIX:=release/}" # needed to uncloak releases to git from github
     : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-/
     : "${FEATURE_PREFIX:=feature/}"
-    if [[ " $* " == *" init "* ]]; then
+    if [[ " $* " =~ " "(setup|init)" " ]]; then
         : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
     else
         read CURRENT <<<$(git branch --show-current) 2> /dev/null
