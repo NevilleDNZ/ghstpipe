@@ -1146,8 +1146,8 @@ upstream_tag_and_release(){
             # typeof_major_minor_patch="${#RELEASE}" ???
             let typeof_major_minor_patch="${#RELEASE}"-1
             #read RELEASE <<< "$(gh release list --repo ABCDev/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
-            read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName'
-                                | grep -v "[-][0-9][0-9][0-9][0-9]" | sort -V | tail -1 )"
+            read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName' |
+                                grep -v "[-][0-9][0-9][0-9][0-9]" | sort -V | tail -1 )"
 # removed due to some kind of bash/vscode bug/clash???
 #            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
 #                let BASH_REMATCH[$typeof_major_minor_patch]++
