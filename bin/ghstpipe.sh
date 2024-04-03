@@ -16,7 +16,7 @@ set_env(){
     : "${__VERBOSITY:="-v"}" # or -vv
     : "${__DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
     : "${__INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
-    : "${__COMMIT_ALL_DOWNSTREAM:="TrUe"}" # Commit ALL to DS, even the PRs to US - preserves filemod times in DS
+    : "${__COMMIT_ALL_DOWNSTREAM:=""}" # Commit ALL to DS, even the PRs to US - preserves filemod times in DS
 
 # ToDo: maybe rename proc `update` to `merge_develop`
 # ToDo: maybe rename proc `release` to `merge_release`
