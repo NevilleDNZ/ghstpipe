@@ -30,11 +30,11 @@ set_env(){
     : "${MERGE_MESSAGE:="feature merge"}"
 
     if [ -n "$__BASHDB" ]; then # VSCode debug
-        WATCH="" TRACK=""
+        WATCH="" ASSERT=""
         WAIT="" # turn off tracing to allow VSCode bash-debug. BUT break at each WAIT
         ECHO="echo"
     else
-        WATCH="WATCH" TRACK="TRACK"
+        WATCH="WATCH" ASSERT="ASSERT"
         WAIT="WAIT" # turn on wait
         ECHO="ECHO"
     fi
@@ -80,7 +80,7 @@ set_env(){
     : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
     : "${TESTING:=}" # alt2
     : "${FULLTEST:=}" # alt3
-    : "${DEVELOP:=develop}"
+    : "${BETA:=develop}"
     : "${STAGING:=}" # alt5
     : "${PREPROD:=}" # alt6
     : "${TRUNK=trunk}"
@@ -89,14 +89,15 @@ set_env(){
     : "${VISIBILITY:=private}"
     : "${VISIBILITY:=public}"
 
-    PIPELINE_FEATURE="$TESTING $FULLTEST $DEVELOP" # from FEATURE
-    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from DEVELOP
+    PIPELINE_FEATURE="$TESTING $FULLTEST $BETA" # from FEATURE
+    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from BETA
     PIPELINE_TAIL="$FEATURE $PIPELINE_FEATURE $PIPELINE_UPSTREAM"
-    REV_PIPELINE_HEAD="$PREPROD $STAGING $DEVELOP $FULLTEST $TESTING $FEATURE"
+    REV_PIPELINE_HEAD="$PREPROD $STAGING $BETA $FULLTEST $TESTING $FEATURE"
 
     if [ -n "$__COMMIT_ALL_DOWNSTREAM" ]; then
+        BETA=$TRUNK
         PIPELINE_FEATURE="$PIPELINE_TAIL" # from FEATURE
-        PIPELINE_UPSTREAM="" # from DEVELOP
+        PIPELINE_UPSTREAM="" # from BETA
     fi 
 
      : "${GIT_MERGE:=""}"
@@ -237,14 +238,14 @@ You also need to generate a Github a Personal Authentication Token for each GitH
 
 # A crude guide to the sequence GHSTPIPE performs tasks:
  * On '\$TRUNK' create a README.md file containing the Line “Under
-Construction”, and merge this into \$DEVELOP, then \$STAGING, then \$TRUNK.
+Construction”, and merge this into \$BETA, then \$STAGING, then \$TRUNK.
  * Use 'gh repo create' and 'git push' to register the project under
 \$USER_UPSTREAM at github.
  * Create a local empty git repository called \$PRJ_UPSTREAM
  * Instead of creating a 'master' branch, create a '\$TRUNK'.
  * Also create a '\$FEATURE' branch from '\$TESTING'.
- * Also create a '\$TESTING' branch from '\$DEVELOP'.
- * Also create a '\$DEVELOP' branch from '\$STAGING'.
+ * Also create a '\$TESTING' branch from '\$BETA'.
+ * Also create a '\$BETA' branch from '\$STAGING'.
  * Also create a '\$STAGING' branch from '\$TRUNK'.
  * Grant \$USER_FEATURE rights enough to fork \$PRJ_UPSTREAM.
  * Then clone the repo to \$USER_FEATURE's account, as a forked repo called
@@ -260,8 +261,8 @@ bin/\$APP) in this branch.
  * Add and then 'commit' these changes to the local repo.
  * Add another line to \$APP that print "Goodbye cruel world!"
  * Add and then 'commit' these changes to the local repo.
- * Switch to the local \$DEVELOP branch, and synchronise with \$USER_FEATURE's
-version of \$DEVELOP.
+ * Switch to the local \$BETA branch, and synchronise with \$USER_FEATURE's
+version of \$BETA.
 
 ## EXAMPLE
 
@@ -388,7 +389,7 @@ WATCH(){ # trace only, don't track errno in $?
     "$@" # || RAISE
 }
 
-TRACK(){
+ASSERT(){
     LN="$(caller | sed "s/ .*//")"
     cmd="$*"
     case "$skip" in
@@ -423,10 +424,14 @@ WAIT(){
 RACECONDITIONWAIT(){ # A total HACK ;-)
     # GH can take a little time to do the above...
     if [ -n "$1" ]; then
-        sleep $1
+        sleep=$1
     else
-        sleep 12 # 6 seconds is too fast sometimes
+        sleep=12 # 6 seconds is too fast sometimes
     fi
+    for((i=sleep; sleep; sleep--)); do
+        echo -n $sleep.; sleep 1
+    done
+    echo ..
 }
 
 CO(){
@@ -440,16 +445,21 @@ AUTH(){
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
-        for try in 1 2 3; do
+        for try in 1 2 3 4 5 6; do
+            #echo PW="$1"
             if $WATCH gh auth login --with-token <<< "$1"; then
+                rc="$?"
                 THIS_AUTH="$1"
-                return "$?"
+                echo AUTH: SUCCESS
+                RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+                return "$rc"
             else
                 $ECHO gh auth login --with-token
                 rc="$?"
             fi
             RACECONDITIONWAIT 6 # GH can take a little time to do the above...
         done
+        set -x
         RAISE
         THIS_AUTH="$1"
     else
@@ -475,7 +485,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git checkout -b testing develop
     git checkout -b feature/debut-src testing
 : create_releasing_repo
-    gh repo create NevilleDNZ/gh_staging0 --private --source=. --remote=origin --push
+    gh repo create ABCDev/gh_staging0 --private --source=. --remote=origin --push
     git push --all
     mv ../gh_staging0 ../gh_staging0-upstream
     mkdir -p ../gh_staging0-downstream
@@ -483,7 +493,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     curl -X PATCH -H 'Authorization: token gho_...' https://api.github.com/user/repository_invitations/246898334
 : create_downstream_repo
     gh auth login --with-token
-    gh repo fork NevilleDNZ/gh_staging0 --fork-name gh_staging0-downstream --clone
+    gh repo fork ABCDev/gh_staging0 --fork-name gh_staging0-downstream --clone
     git config --local checkout.defaultRemote origin
 : feature
 : create_feature
@@ -513,18 +523,18 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_staging0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_staging0:develop.' --repo ABCDev/gh_staging0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_staging0
-    gh pr merge 1 --repo NevilleDNZ/gh_staging0 --merge
+    gh pr list --repo ABCDev/gh_staging0
+    gh pr merge 1 --repo ABCDev/gh_staging0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
-    gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
+    gh pr create --base staging --head ABCDev:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo ABCDev/gh_staging0
+    gh pr merge 2 --repo ABCDev/gh_staging0 --merge
+    gh pr create --base trunk --head ABCDev:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_staging0
+    gh pr merge 3 --repo ABCDev/gh_staging0 --merge
+    gh release create 0.1.1 --target trunk --repo ABCDev/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : commit_feature
     gh auth login --with-token
@@ -559,18 +569,18 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_staging0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_staging0:develop.' --repo ABCDev/gh_staging0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_staging0
-    gh pr merge 4 --repo NevilleDNZ/gh_staging0 --merge
+    gh pr list --repo ABCDev/gh_staging0
+    gh pr merge 4 --repo ABCDev/gh_staging0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
-    gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
+    gh pr create --base staging --head ABCDev:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo ABCDev/gh_staging0
+    gh pr merge 5 --repo ABCDev/gh_staging0 --merge
+    gh pr create --base trunk --head ABCDev:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_staging0
+    gh pr merge 6 --repo ABCDev/gh_staging0 --merge
+    gh release create 0.1.2 --target trunk --repo ABCDev/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : commit_feature
     gh auth login --with-token
@@ -635,7 +645,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git checkout -b develop trunk
     git checkout -b feature/debut-src develop
 : create_releasing_repo
-    gh repo create NevilleDNZ/gh_test0 --private --source=. --remote=origin --push
+    gh repo create ABCDev/gh_test0 --private --source=. --remote=origin --push
     git push --all
     mv ../gh_test0 ../gh_test0-upstream
     mkdir -p ../gh_test0-downstream
@@ -643,7 +653,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     curl -X PATCH -H 'Authorization: token gho_...' https://api.github.com/user/repository_invitations/246898605
 : create_downstream_repo
     gh auth login --with-token
-    gh repo fork NevilleDNZ/gh_test0 --fork-name gh_test0-downstream --clone
+    gh repo fork ABCDev/gh_test0 --fork-name gh_test0-downstream --clone
     git config --local checkout.defaultRemote origin
 : feature
 : create_feature
@@ -669,16 +679,16 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_test0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_test0:develop.' --repo ABCDev/gh_test0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_test0
-    gh pr merge 1 --repo NevilleDNZ/gh_test0 --merge
+    gh pr list --repo ABCDev/gh_test0
+    gh pr merge 1 --repo ABCDev/gh_test0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
-    gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
+    gh pr create --base trunk --head ABCDev:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_test0
+    gh pr merge 2 --repo ABCDev/gh_test0 --merge
+    gh release create 0.1.1 --target trunk --repo ABCDev/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : commit_feature
     gh auth login --with-token
@@ -705,16 +715,16 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_test0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_test0:develop.' --repo ABCDev/gh_test0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_test0
-    gh pr merge 3 --repo NevilleDNZ/gh_test0 --merge
+    gh pr list --repo ABCDev/gh_test0
+    gh pr merge 3 --repo ABCDev/gh_test0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
-    gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
+    gh pr create --base trunk --head ABCDev:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_test0
+    gh pr merge 4 --repo ABCDev/gh_test0 --merge
+    gh release create 0.1.2 --target trunk --repo ABCDev/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : commit_feature
     gh auth login --with-token
@@ -767,39 +777,39 @@ create_local_releasing_repo(){
     CD $PRJ_UPSTREAM
 
     if [ -n "$__WRAP_UPSTREAM" ]; then
-        $TRACK gh repo clone $USER_UPSTREAM/$PRJ_UPSTREAM .
-        $TRACK git fetch --all --tags
+        $ASSERT gh repo clone $USER_UPSTREAM/$PRJ_UPSTREAM .
+        $ASSERT git fetch --all --tags
     else
-        $TRACK git init
+        $ASSERT git init
     fi
-    $TRACK git config --local init.defaultBranch $DEVELOP
+    $ASSERT git config --local init.defaultBranch $BETA
     $WATCH git checkout -b $TRUNK
-    $TRACK git add .
-    #$TRACK git commit -m "Commit (master/main) $TRUNK branch"
+    $ASSERT git add .
+    #$ASSERT git commit -m "Commit (master/main) $TRUNK branch"
     # $WATCH git checkout $TRUNK # ignore initial error, for now!
-    # git add README.md; git commit -m "first commit"; git branch -M trunk; git remote add origin https://github.com/NevilleDNZ/gh_hw0.git; git push -u origin trunk
+    # git add README.md; git commit -m "first commit"; git branch -M trunk; git remote add origin https://github.com/ABCDev/gh_hw0.git; git push -u origin trunk
 
     CO Add README.md in $FEATURE
     echo "# $TITLE" > README.md
     echo "" >> README.md
     echo "Under Construction" >> README.md
-    $TRACK git add README.md
-    $TRACK git commit -m "Add README.md with under construction message"
+    $ASSERT git add README.md
+    $ASSERT git commit -m "Add README.md with under construction message"
 
     CO Create branches as specified
     HEAD=$TRUNK
     for BASE in $REV_PIPELINE_HEAD; do
-         $TRACK git checkout -b $BASE $HEAD
+         $ASSERT git checkout -b $BASE $HEAD
          HEAD=$BASE
     done
 
     # git merge staging ...; => Already up to date.
 #    # ToDo#0: use REV_PIPELINE below??
-#    CO Merge $FEATURE into $TESTING, $DEVELOP, $STAGING, and $TRUNK
+#    CO Merge $FEATURE into $TESTING, $BETA, $STAGING, and $TRUNK
 #    HEAD=$FEATURE
 #    for BASE in $PIPELINE_TAIL; do
 #         $WATCH git checkout $BASE
-#         $TRACK git merge $GIT_MERGE $HEAD # does a merge need a commit?
+#         $ASSERT git merge $GIT_MERGE $HEAD # does a merge need a commit?
 #         HEAD=$BASE
 #    done
     CD -
@@ -889,17 +899,17 @@ create_releasing_repo(){
     if [ -z "$__WRAP_UPSTREAM" ]; then
         CO Create repo on GitHub under $USER_UPSTREAM
         RACECONDITIONWAIT 6 # GH can take a little time to do the above...
-        $TRACK gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
+        $ASSERT gh repo create $USER_UPSTREAM/$PRJ_UPSTREAM --$VISIBILITY --source=. --remote=origin --push
         RACECONDITIONWAIT 6 # GH can take a little time to do the above...
     fi
     
 
-    $TRACK git push --all
-    $TRACK gh repo edit $USER_UPSTREAM/$PRJ_UPSTREAM --default-branch $TRUNK
+    $ASSERT git push --all
+    $ASSERT gh repo edit $USER_UPSTREAM/$PRJ_UPSTREAM --default-branch $TRUNK
 
     # if [ $PRJ_UPSTREAM = $PRJ_FEATURE ]; then # nee_DOWNSTREAM to be moved aside for $_DOWNSTREAM
-        $TRACK mv ../$PRJ_UPSTREAM ../$PRJ_UPSTREAM$_UPSTREAM
-        $TRACK mkdir -p ../$PRJ_FEATURE
+        $ASSERT mv ../$PRJ_UPSTREAM ../$PRJ_UPSTREAM$_UPSTREAM
+        $ASSERT mkdir -p ../$PRJ_FEATURE
     # fi
 
     CO Grant $USER_FEATURE fork rights "(handled via GitHub settings, not scriptable via gh CLI)"
@@ -912,10 +922,13 @@ create_releasing_repo(){
         ECHO then LOGGED IN as $USER_FEATURE https://github.com/notifications, "[$USER_FEATURE => Mailbox => # => Accept invitation]"
         $WAIT
     else
-        read COLL_ID <<< $(
-        WATCH echo '{"permission":"read"}' |
-            TRACK gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
-        )
+        #read COLL_ID <<< $(
+        #WATCH echo '{"permission":"read"}' |
+        #    ASSERT gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq '.id' --input -
+        #)
+        RACECONDITIONWAIT # GH can take a little time to do the above...
+        cmd="gh api -X PUT /repos/$USER_UPSTREAM/$PRJ_UPSTREAM/collaborators/$USER_FEATURE --jq .id --input -"
+        COLL_ID=$( ASSERT $cmd <<< '{"permission":"read"}')  || RAISE $cmd
         ECHO COLL_ID=$COLL_ID
 
         #WATCH curl -X PATCH -H "Authorization: token $USER_FEATURE_TOKEN" https://api.github.com/user/repository_invitations/$COLL_ID
@@ -945,27 +958,27 @@ create_downstream_repo(){
             ECHO ACTION manually rename $PRJ_UPSTREAM to $PRJ_FEATURE
             $WAIT
         else
-        #$TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone=false --fork-name $PRJ_FEATURE
-            $TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --fork-name $PRJ_FEATURE --clone
-        # $TRACK gh repo rename $USER_FEATURE/$PRJ_UPSTREAM $PRJ_FEATURE || RAISE
+        #$ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone=false --fork-name $PRJ_FEATURE
+            $ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --fork-name $PRJ_FEATURE --clone
+        # $ASSERT gh repo rename $USER_FEATURE/$PRJ_UPSTREAM $PRJ_FEATURE || RAISE
             RACECONDITIONWAIT # GH can take a little time to do the FORK...
             CD $PRJ_FEATURE
-            $TRACK git config --local checkout.defaultRemote origin # because fork creates both upstream and origin
-# origin	https://github.com/NevilleDNZ-downstream/gh_staging0-downstream.git (fetch)
-# origin	https://github.com/NevilleDNZ-downstream/gh_staging0-downstream.git (push)
-# upstream	https://github.com/NevilleDNZ/gh_staging0.git (fetch)
-# upstream	https://github.com/NevilleDNZ/gh_staging0.git (push)
+            $ASSERT git config --local checkout.defaultRemote origin # because fork creates both upstream and origin
+# origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (fetch)
+# origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (push)
+# upstream	https://github.com/ABCDev/gh_staging0.git (fetch)
+# upstream	https://github.com/ABCDev/gh_staging0.git (push)
 
         fi
     else
-        $TRACK gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone
+        $ASSERT gh repo fork $USER_UPSTREAM/$PRJ_UPSTREAM --clone
         RACECONDITIONWAIT # GH can take a little time to do the FORK...
     fi
 
     CO Clone $USER_FEATURE forked repo
     # CD ..
-    # $TRACK git clone https://github.com/$USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
-    # or: $TRACK gh repo clone $USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
+    # $ASSERT git clone https://github.com/$USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
+    # or: $ASSERT gh repo clone $USER_FEATURE/$PRJ_FEATURE $PRJ_FEATURE
     # CD $PRJ_FEATURE
 #    CD -
 }
@@ -978,8 +991,8 @@ create_feature(){
 
     CO Create feature branch $FEATURE and add Python script
     $WATCH git checkout -b $FEATURE
-    $TRACK gh api -X PATCH /repos/$USER_FEATURE/$PRJ_FEATURE -f default_branch=$FEATURE
-    $TRACK git config --local init.defaultBranch $FEATURE # avoid commits to TRUNK
+    $ASSERT gh api -X PATCH /repos/$USER_FEATURE/$PRJ_FEATURE -f default_branch=$FEATURE
+    $ASSERT git config --local init.defaultBranch $FEATURE # avoid commits to TRUNK
 #    CD -
 }
 
@@ -989,18 +1002,18 @@ add_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     $WATCH mkdir -p bin
     $WATCH echo "echo 'hello, world! $RELEASE'" > bin/$APP
-    $TRACK chmod ug+x bin/$APP
-    $TRACK git add bin/$APP
-    $TRACK git commit -m "Add a foundation shell script"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT chmod ug+x bin/$APP
+    $ASSERT git add bin/$APP
+    $ASSERT git commit -m "Add a foundation shell script"
+    $ASSERT git push # with default # origin $FEATURE
 
     # CO Add another line to the script
     # $WATCH echo "echo 'Goodbye Cruel World!'" >> bin/$APP
-    # $TRACK git commit -am "Update $APP with goodbye message"
+    # $ASSERT git commit -am "Update $APP with goodbye message"
 #    CD -
 }
 
@@ -1010,12 +1023,12 @@ update_ts_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK echo "echo 'Updated @ "$(date +"%Y%m%d%H%M%S")" - $RELEASE'" > bin/$APP
-    $TRACK git commit -am "Update $APP with $FEATURE timestamp"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT echo "echo 'Updated @ "$(date +"%Y%m%d%H%M%S")" - $RELEASE'" > bin/$APP
+    $ASSERT git commit -am "Update $APP with $FEATURE timestamp"
+    $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
 
@@ -1025,15 +1038,15 @@ commit_feature(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     $WATCH git checkout $FEATURE # ignore initial error, for now!
-    $TRACK git pull # with default # origin $FEATURE # QQQ
+    $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $TRACK git commit -am "$COMMIT_MESSAGE"
-    $TRACK git push # with default # origin $FEATURE
+    $ASSERT git commit -am "$COMMIT_MESSAGE"
+    $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
 
-HELP_merge_feature="Merge $FEATURE into $DEVELOP"
+HELP_merge_feature="Merge $FEATURE into $BETA"
 merge_feature(){
 
     AUTH $USER_FEATURE_TOKEN
@@ -1044,12 +1057,12 @@ merge_feature(){
         CO Switch to $BASE and sync
         # $WATCH git checkout -b $BASE origin/$BASE
         $WATCH git checkout $BASE
-        $TRACK git pull # with default # origin $BASE # get any updates
+        $ASSERT git pull # with default # origin $BASE # get any updates
 
         CO Merge $HEAD into $BASE
-        #$TRACK git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
-        $TRACK git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
-        $TRACK git push # with default # origin $BASE
+        #$ASSERT git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git push # with default # origin $BASE
         HEAD=$BASE
     done
 #    CD -
@@ -1062,19 +1075,20 @@ create_fork_pull_request(){
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
 
-    $TRACK gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
+    $ASSERT gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
     RACECONDITIONWAIT # GH can take a little time to do the above...
 
-    # chatgpt: $TRACK gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
+    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $BETA --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
 
-    BRANCH=$DEVELOP
+    BRANCH=$BETA
     set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
     set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.'
 
-    read PR_URL <<< $($TRACK gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
+    read PR_URL <<< $($ASSERT gh pr create --base $BRANCH --head $USER_FEATURE:$BRANCH --title "$DEVELOP_PR_TITLE" --body "$DEVELOP_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM) || RAISE
     RACECONDITIONWAIT # GH can take a little time to do the above...
-    PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
+    read PR_NUMBER <<< $(echo $PR_URL | grep -o '[^/]*$')
     ECHO PR_NUMBER=$PR_NUMBER
+    ASSERT test "$PR_NUMBER" != ""
 }
 
 HELP_merge_fork_pull_request="Merge pull request on USER_UPSTREAM's repo from fork (using USER_FEATURE's token)"
@@ -1094,7 +1108,7 @@ merge_fork_pull_request(){
     set_msg DEVELOP_MERGE_SUBJECT ''
     set_msg DEVELOP_MERGE_BODY ''
     RACECONDITIONWAIT # GH can take a little time to do the above...
-    $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $DEVELOP_MERGE --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
+    $ASSERT gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $DEVELOP_MERGE --subject "$DEVELOP_MERGE_SUBJECT" --body "$DEVELOP_MERGE_SUBJECT"
     PR_NUMBER=qqq
 #    CD -
 }
@@ -1105,18 +1119,18 @@ upstream_pr_merge(){
     AUTH $USER_UPSTREAM_TOKEN
     CD $PRJ_FEATURE
 
-    CO Merge $DEVELOP into $STAGING
+    CO Merge $BETA into $STAGING
     CO Merge $STAGING into $TRUNK
-    HEAD=$DEVELOP # from
+    HEAD=$BETA # from
     for BASE in $PIPELINE_UPSTREAM; do
         set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
         set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.'
 
-        read PR_URL <<< "$($TRACK gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
+        read PR_URL <<< "$($ASSERT gh pr create --base $BASE --head $USER_UPSTREAM:$HEAD --title "$RELEASE_PR_TITLE" --body "$RELEASE_PR_BODY" --repo $USER_UPSTREAM/$PRJ_UPSTREAM)" || RAISE
         PR_NUMBER=$(echo $PR_URL | grep -o '[^/]*$')
         set_msg RELEASE_MERGE_SUBJECT ''
         set_msg RELEASE_MERGE_BODY ''
-        $TRACK gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $GH_PR_MERGE --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
+        $ASSERT gh pr merge "$PR_NUMBER" --repo $USER_UPSTREAM/$PRJ_UPSTREAM $GH_PR_MERGE --subject "$RELEASE_MERGE_SUBJECT" --body "$RELEASE_MERGE_SUBJECT"
         PR_NUMBER=QQQ
         HEAD=$BASE
     done
@@ -1133,12 +1147,14 @@ upstream_tag_and_release(){
             major_minor_patch="${RELEASE}"
             # typeof_major_minor_patch="${#RELEASE}" ???
             let typeof_major_minor_patch="${#RELEASE}"-1
-            read RELEASE <<< "$(gh release list --repo NevilleDNZ/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
+            #read RELEASE <<< "$(gh release list --repo ABCDev/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
+            read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName' |
+                                egrep -v '[-][0-9][0-9][0-9][0-9]|[-.]beta$' | sort -V | tail -1 )"
 # removed due to some kind of bash/vscode bug/clash???
 #            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
 #                let BASH_REMATCH[$typeof_major_minor_patch]++
 #                RELEASE="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-            IFS="." read -ra mmp <<< "$RELEASE"
+            IFS="[-.]" read -ra mmp <<< "$RELEASE"
             if [ -n "${mmp[$typeof_major_minor_patch]}" ]; then
                 let mmp[$typeof_major_minor_patch]++
                 RELEASE="$(IFS="."; echo "${mmp[*]}")"
@@ -1156,16 +1172,16 @@ upstream_tag_and_release(){
     set_msg RELEASE_NOTES 'Release $RELEASE'
 
     CO Create a GitHub release for the tag
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
     RACECONDITIONWAIT
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 # on downstream
-    $TRACK gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
 # on upstream
 
     if [ -n "$major_minor_patch" ]; then
@@ -1182,50 +1198,50 @@ pr_merge_tag_and_release(){
 }
 
 setup(){
-    $TRACK create_local_releasing_repo
-    $TRACK create_releasing_repo
-    $TRACK create_downstream_repo
+    $ASSERT create_local_releasing_repo
+    $ASSERT create_releasing_repo
+    $ASSERT create_downstream_repo
 }
 
 feature(){
-    $TRACK create_feature
-    $TRACK add_feature
+    $ASSERT create_feature
+    $ASSERT add_feature
 }
 
 update_ts(){
-    $TRACK update_ts_feature
-    $TRACK merge_feature
+    $ASSERT update_ts_feature
+    $ASSERT merge_feature
 }
 
 update(){
-    $TRACK commit_feature
-    $TRACK merge_feature
+    $ASSERT commit_feature
+    $ASSERT merge_feature
 }
 
 release(){
-    $TRACK create_fork_pull_request
-    $TRACK merge_fork_pull_request
-    $TRACK pr_merge_tag_and_release
+    $ASSERT create_fork_pull_request
+    $ASSERT merge_fork_pull_request
+    $ASSERT pr_merge_tag_and_release
 }
 
 init(){
-    $TRACK setup
-    $TRACK feature
-    $TRACK update
-    $TRACK release
+    $ASSERT setup
+    $ASSERT feature
+    $ASSERT update
+    $ASSERT release
 }
 
 base_test(){
-    $TRACK setup
-    $TRACK feature
+    $ASSERT setup
+    $ASSERT feature
     CD $PRJ_FEATURE
-    $TRACK update_ts
+    $ASSERT update_ts
     RELEASE=0.1.1 release
-    $TRACK update_ts
-    $TRACK update_ts
+    $ASSERT update_ts
+    $ASSERT update_ts
     RELEASE=+++ release
-    $TRACK update_ts
-    $TRACK update_ts
+    $ASSERT update_ts
+    $ASSERT update_ts
     RELEASE=0.1.3 update_ts release
 }
 
@@ -1272,7 +1288,7 @@ while [ $# -gt 0 ]; do
 #    CO "Processing argument: $1"
     case "$1" in
         (*=*)eval "$1";;
-        (*) $TRACK "$1";;
+        (*) $ASSERT "$1";;
     esac
     shift  # Move to the next argument
 done

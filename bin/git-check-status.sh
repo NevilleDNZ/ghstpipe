@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+code . $(find * .github -type f )
 
 help(){
      man <(cat << eof
@@ -141,6 +142,7 @@ add_cmd() {
     fi
 }
 
+summarise(){
 # A) Unstash each stash
 query="git stash list"
 #stash_count=$($query | wc -l)
@@ -307,4 +309,13 @@ echo
 
 # Print the command list
 echo "$CMD_LIST"
+}
 
+if [ "$#" = 0 ]; then
+    summarise
+else
+    for d in "$@"; do
+        echo "=== $d ==="
+        ( cd "$d"; summarise "$d";)
+    done
+fi
