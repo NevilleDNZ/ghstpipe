@@ -80,7 +80,7 @@ set_env(){
     : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
     : "${TESTING:=}" # alt2
     : "${FULLTEST:=}" # alt3
-    : "${DEVELOP:=develop}"
+    : "${BETA:=develop}"
     : "${STAGING:=}" # alt5
     : "${PREPROD:=}" # alt6
     : "${TRUNK=trunk}"
@@ -89,14 +89,15 @@ set_env(){
     : "${VISIBILITY:=private}"
     : "${VISIBILITY:=public}"
 
-    PIPELINE_FEATURE="$TESTING $FULLTEST $DEVELOP" # from FEATURE
-    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from DEVELOP
+    PIPELINE_FEATURE="$TESTING $FULLTEST $BETA" # from FEATURE
+    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from BETA
     PIPELINE_TAIL="$FEATURE $PIPELINE_FEATURE $PIPELINE_UPSTREAM"
-    REV_PIPELINE_HEAD="$PREPROD $STAGING $DEVELOP $FULLTEST $TESTING $FEATURE"
+    REV_PIPELINE_HEAD="$PREPROD $STAGING $BETA $FULLTEST $TESTING $FEATURE"
 
     if [ -n "$__COMMIT_ALL_DOWNSTREAM" ]; then
+        BETA=$TRUNK
         PIPELINE_FEATURE="$PIPELINE_TAIL" # from FEATURE
-        PIPELINE_UPSTREAM="" # from DEVELOP
+        PIPELINE_UPSTREAM="" # from BETA
     fi 
 
      : "${GIT_MERGE:=""}"
@@ -237,14 +238,14 @@ You also need to generate a Github a Personal Authentication Token for each GitH
 
 # A crude guide to the sequence GHSTPIPE performs tasks:
  * On '\$TRUNK' create a README.md file containing the Line “Under
-Construction”, and merge this into \$DEVELOP, then \$STAGING, then \$TRUNK.
+Construction”, and merge this into \$BETA, then \$STAGING, then \$TRUNK.
  * Use 'gh repo create' and 'git push' to register the project under
 \$USER_UPSTREAM at github.
  * Create a local empty git repository called \$PRJ_UPSTREAM
  * Instead of creating a 'master' branch, create a '\$TRUNK'.
  * Also create a '\$FEATURE' branch from '\$TESTING'.
- * Also create a '\$TESTING' branch from '\$DEVELOP'.
- * Also create a '\$DEVELOP' branch from '\$STAGING'.
+ * Also create a '\$TESTING' branch from '\$BETA'.
+ * Also create a '\$BETA' branch from '\$STAGING'.
  * Also create a '\$STAGING' branch from '\$TRUNK'.
  * Grant \$USER_FEATURE rights enough to fork \$PRJ_UPSTREAM.
  * Then clone the repo to \$USER_FEATURE's account, as a forked repo called
@@ -260,8 +261,8 @@ bin/\$APP) in this branch.
  * Add and then 'commit' these changes to the local repo.
  * Add another line to \$APP that print "Goodbye cruel world!"
  * Add and then 'commit' these changes to the local repo.
- * Switch to the local \$DEVELOP branch, and synchronise with \$USER_FEATURE's
-version of \$DEVELOP.
+ * Switch to the local \$BETA branch, and synchronise with \$USER_FEATURE's
+version of \$BETA.
 
 ## EXAMPLE
 
@@ -781,7 +782,7 @@ create_local_releasing_repo(){
     else
         $ASSERT git init
     fi
-    $ASSERT git config --local init.defaultBranch $DEVELOP
+    $ASSERT git config --local init.defaultBranch $BETA
     $WATCH git checkout -b $TRUNK
     $ASSERT git add .
     #$ASSERT git commit -m "Commit (master/main) $TRUNK branch"
@@ -804,7 +805,7 @@ create_local_releasing_repo(){
 
     # git merge staging ...; => Already up to date.
 #    # ToDo#0: use REV_PIPELINE below??
-#    CO Merge $FEATURE into $TESTING, $DEVELOP, $STAGING, and $TRUNK
+#    CO Merge $FEATURE into $TESTING, $BETA, $STAGING, and $TRUNK
 #    HEAD=$FEATURE
 #    for BASE in $PIPELINE_TAIL; do
 #         $WATCH git checkout $BASE
@@ -1045,7 +1046,7 @@ commit_feature(){
 #    CD -
 }
 
-HELP_merge_feature="Merge $FEATURE into $DEVELOP"
+HELP_merge_feature="Merge $FEATURE into $BETA"
 merge_feature(){
 
     AUTH $USER_FEATURE_TOKEN
@@ -1077,9 +1078,9 @@ create_fork_pull_request(){
     $ASSERT gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
     RACECONDITIONWAIT # GH can take a little time to do the above...
 
-    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
+    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $BETA --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
 
-    BRANCH=$DEVELOP
+    BRANCH=$BETA
     set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
     set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.'
 
@@ -1118,9 +1119,9 @@ upstream_pr_merge(){
     AUTH $USER_UPSTREAM_TOKEN
     CD $PRJ_FEATURE
 
-    CO Merge $DEVELOP into $STAGING
+    CO Merge $BETA into $STAGING
     CO Merge $STAGING into $TRUNK
-    HEAD=$DEVELOP # from
+    HEAD=$BETA # from
     for BASE in $PIPELINE_UPSTREAM; do
         set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
         set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.'
@@ -1171,7 +1172,7 @@ upstream_tag_and_release(){
     set_msg RELEASE_NOTES 'Release $RELEASE'
 
     CO Create a GitHub release for the tag
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
     RACECONDITIONWAIT
     $ASSERT gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
@@ -1180,7 +1181,7 @@ upstream_tag_and_release(){
     CD $PRJ_FEATURE
     RACECONDITIONWAIT 6 # GH can take a little time to do the above...
 # on downstream
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
 # on upstream
 
     if [ -n "$major_minor_patch" ]; then
