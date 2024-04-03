@@ -1087,7 +1087,7 @@ create_fork_pull_request(){
     RACECONDITIONWAIT # GH can take a little time to do the above...
     read PR_NUMBER <<< $(echo $PR_URL | grep -o '[^/]*$')
     ECHO PR_NUMBER=$PR_NUMBER
-    test "$PR_NUMBER" != "" || RAISE
+    ASSERT test "$PR_NUMBER" != ""
 }
 
 HELP_merge_fork_pull_request="Merge pull request on USER_UPSTREAM's repo from fork (using USER_FEATURE's token)"
