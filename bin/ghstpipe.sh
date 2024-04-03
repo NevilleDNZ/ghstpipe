@@ -484,7 +484,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git checkout -b testing develop
     git checkout -b feature/debut-src testing
 : create_releasing_repo
-    gh repo create NevilleDNZ/gh_staging0 --private --source=. --remote=origin --push
+    gh repo create ABCDev/gh_staging0 --private --source=. --remote=origin --push
     git push --all
     mv ../gh_staging0 ../gh_staging0-upstream
     mkdir -p ../gh_staging0-downstream
@@ -492,7 +492,7 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     curl -X PATCH -H 'Authorization: token gho_...' https://api.github.com/user/repository_invitations/246898334
 : create_downstream_repo
     gh auth login --with-token
-    gh repo fork NevilleDNZ/gh_staging0 --fork-name gh_staging0-downstream --clone
+    gh repo fork ABCDev/gh_staging0 --fork-name gh_staging0-downstream --clone
     git config --local checkout.defaultRemote origin
 : feature
 : create_feature
@@ -522,18 +522,18 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_staging0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_staging0:develop.' --repo ABCDev/gh_staging0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_staging0
-    gh pr merge 1 --repo NevilleDNZ/gh_staging0 --merge
+    gh pr list --repo ABCDev/gh_staging0
+    gh pr merge 1 --repo ABCDev/gh_staging0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 2 --repo NevilleDNZ/gh_staging0 --merge
-    gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 3 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
+    gh pr create --base staging --head ABCDev:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo ABCDev/gh_staging0
+    gh pr merge 2 --repo ABCDev/gh_staging0 --merge
+    gh pr create --base trunk --head ABCDev:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_staging0
+    gh pr merge 3 --repo ABCDev/gh_staging0 --merge
+    gh release create 0.1.1 --target trunk --repo ABCDev/gh_staging0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : commit_feature
     gh auth login --with-token
@@ -568,18 +568,18 @@ $ ghstpipe0.sh PRJ_UPSTREAM=gh_staging STAGING=staging TESTING=testing staging_t
     git merge testing
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_staging0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_staging0:develop.' --repo NevilleDNZ/gh_staging0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_staging0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_staging0:develop.' --repo ABCDev/gh_staging0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_staging0
-    gh pr merge 4 --repo NevilleDNZ/gh_staging0 --merge
+    gh pr list --repo ABCDev/gh_staging0
+    gh pr merge 4 --repo ABCDev/gh_staging0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base staging --head NevilleDNZ:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 5 --repo NevilleDNZ/gh_staging0 --merge
-    gh pr create --base trunk --head NevilleDNZ:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_staging0
-    gh pr merge 6 --repo NevilleDNZ/gh_staging0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
+    gh pr create --base staging --head ABCDev:develop --title 'feature/debut-src integration into staging' --body 'Integrating feature/debut-src changes into staging.' --repo ABCDev/gh_staging0
+    gh pr merge 5 --repo ABCDev/gh_staging0 --merge
+    gh pr create --base trunk --head ABCDev:staging --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_staging0
+    gh pr merge 6 --repo ABCDev/gh_staging0 --merge
+    gh release create 0.1.2 --target trunk --repo ABCDev/gh_staging0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : commit_feature
     gh auth login --with-token
@@ -644,7 +644,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git checkout -b develop trunk
     git checkout -b feature/debut-src develop
 : create_releasing_repo
-    gh repo create NevilleDNZ/gh_test0 --private --source=. --remote=origin --push
+    gh repo create ABCDev/gh_test0 --private --source=. --remote=origin --push
     git push --all
     mv ../gh_test0 ../gh_test0-upstream
     mkdir -p ../gh_test0-downstream
@@ -652,7 +652,7 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     curl -X PATCH -H 'Authorization: token gho_...' https://api.github.com/user/repository_invitations/246898605
 : create_downstream_repo
     gh auth login --with-token
-    gh repo fork NevilleDNZ/gh_test0 --fork-name gh_test0-downstream --clone
+    gh repo fork ABCDev/gh_test0 --fork-name gh_test0-downstream --clone
     git config --local checkout.defaultRemote origin
 : feature
 : create_feature
@@ -678,16 +678,16 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_test0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_test0:develop.' --repo ABCDev/gh_test0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_test0
-    gh pr merge 1 --repo NevilleDNZ/gh_test0 --merge
+    gh pr list --repo ABCDev/gh_test0
+    gh pr merge 1 --repo ABCDev/gh_test0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
-    gh pr merge 2 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.1 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
+    gh pr create --base trunk --head ABCDev:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_test0
+    gh pr merge 2 --repo ABCDev/gh_test0 --merge
+    gh release create 0.1.1 --target trunk --repo ABCDev/gh_test0 --title 'Release 0.1.1' --notes 'Release 0.1.1'
 : update
 : commit_feature
     gh auth login --with-token
@@ -714,16 +714,16 @@ $ ~/bin/ghstpipe0.sh PRJ_UPSTREAM=gh_test0 ghstpipe_test
     git merge feature/debut-src
     git push
 : create_fork_pull_request
-    gh repo set-default https://github.com/NevilleDNZ-downstream/gh_test0-downstream
-    gh pr create --base develop --head NevilleDNZ-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into NevilleDNZ/gh_test0:develop.' --repo NevilleDNZ/gh_test0
+    gh repo set-default https://github.com/ABCDev-downstream/gh_test0-downstream
+    gh pr create --base develop --head ABCDev-downstream:develop --title 'feature/debut-src integration into upstream develop' --body 'Integrating feature/debut-src changes into ABCDev/gh_test0:develop.' --repo ABCDev/gh_test0
 : merge_fork_pull_request
     gh auth login --with-token
-    gh pr list --repo NevilleDNZ/gh_test0
-    gh pr merge 3 --repo NevilleDNZ/gh_test0 --merge
+    gh pr list --repo ABCDev/gh_test0
+    gh pr merge 3 --repo ABCDev/gh_test0 --merge
 : pr_merge_tag_and_release
-    gh pr create --base trunk --head NevilleDNZ:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo NevilleDNZ/gh_test0
-    gh pr merge 4 --repo NevilleDNZ/gh_test0 --merge
-    gh release create 0.1.2 --target trunk --repo NevilleDNZ/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
+    gh pr create --base trunk --head ABCDev:develop --title 'feature/debut-src integration into trunk' --body 'Integrating feature/debut-src changes into trunk.' --repo ABCDev/gh_test0
+    gh pr merge 4 --repo ABCDev/gh_test0 --merge
+    gh release create 0.1.2 --target trunk --repo ABCDev/gh_test0 --title 'Release 0.1.2' --notes 'Release 0.1.2'
 : update
 : commit_feature
     gh auth login --with-token
@@ -786,7 +786,7 @@ create_local_releasing_repo(){
     $TRACK git add .
     #$TRACK git commit -m "Commit (master/main) $TRUNK branch"
     # $WATCH git checkout $TRUNK # ignore initial error, for now!
-    # git add README.md; git commit -m "first commit"; git branch -M trunk; git remote add origin https://github.com/NevilleDNZ/gh_hw0.git; git push -u origin trunk
+    # git add README.md; git commit -m "first commit"; git branch -M trunk; git remote add origin https://github.com/ABCDev/gh_hw0.git; git push -u origin trunk
 
     CO Add README.md in $FEATURE
     echo "# $TITLE" > README.md
@@ -963,10 +963,10 @@ create_downstream_repo(){
             RACECONDITIONWAIT # GH can take a little time to do the FORK...
             CD $PRJ_FEATURE
             $TRACK git config --local checkout.defaultRemote origin # because fork creates both upstream and origin
-# origin	https://github.com/NevilleDNZ-downstream/gh_staging0-downstream.git (fetch)
-# origin	https://github.com/NevilleDNZ-downstream/gh_staging0-downstream.git (push)
-# upstream	https://github.com/NevilleDNZ/gh_staging0.git (fetch)
-# upstream	https://github.com/NevilleDNZ/gh_staging0.git (push)
+# origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (fetch)
+# origin	https://github.com/ABCDev-downstream/gh_staging0-downstream.git (push)
+# upstream	https://github.com/ABCDev/gh_staging0.git (fetch)
+# upstream	https://github.com/ABCDev/gh_staging0.git (push)
 
         fi
     else
@@ -1145,12 +1145,14 @@ upstream_tag_and_release(){
             major_minor_patch="${RELEASE}"
             # typeof_major_minor_patch="${#RELEASE}" ???
             let typeof_major_minor_patch="${#RELEASE}"-1
-            read RELEASE <<< "$(gh release list --repo NevilleDNZ/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
+            #read RELEASE <<< "$(gh release list --repo ABCDev/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
+            read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName'
+                                | grep -v "[-][0-9][0-9][0-9][0-9]" | sort -V | tail -1 )"
 # removed due to some kind of bash/vscode bug/clash???
 #            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
 #                let BASH_REMATCH[$typeof_major_minor_patch]++
 #                RELEASE="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-            IFS="." read -ra mmp <<< "$RELEASE"
+            IFS="[-.]" read -ra mmp <<< "$RELEASE"
             if [ -n "${mmp[$typeof_major_minor_patch]}" ]; then
                 let mmp[$typeof_major_minor_patch]++
                 RELEASE="$(IFS="."; echo "${mmp[*]}")"
