@@ -99,8 +99,13 @@ set_env(){
 
  #   Maybe, various systems use alternative "beta" strategies
     : "${BETA=beta}"
-    : "${_BETA=_$BETA}"
-    : "${re_BETA=[-._]$BETA}"
+    : "${_BETA=-$BETA}"
+    : "${re_BETA=[-._~+]$BETA}"
+    # ChatGPT: While you might encounter a ~beta suffix in very  
+    # specific contexts or projects that have decided on a unique  
+    # versioning scheme, it's not a widespread practice on GitHub.
+    # The -beta suffix (following SemVer guidelines) is far more 
+    # common and recognized for indicating beta releases. 
 
     : "${COMMIT_MESSAGE:="$FEATURE commit"}"
     : "${MERGE_MESSAGE:="$FEATURE merge"}"  
