@@ -58,8 +58,8 @@ set_env(){
     : "${_UPSTREAM:="-upstream"}"
     : "${_DOWNSTREAM:="-downstream"}"
 
-    if [ ! -n "$PRJ_UPSTREAM" ]; then
-        read PRJ_UPSTREAM <<< $(git remote -v | ( read origin path method; expr "$path" : ".*/\(.*\)$_DOWNSTREAM"))
+    if [ -z "$PRJ_UPSTREAM" ]; then
+        read PRJ_UPSTREAM <<< "$(git remote -v | sed "s?.*/??; s/$_DOWNSTREAM//;"' s/[.]git ([^ ]*)$//')"
         : "${PRJ_UPSTREAM:=gh_hw0}"
     fi
 
@@ -1177,7 +1177,7 @@ upstream_tag_and_release(){
             let typeof_major_minor_patch="${#RELEASE}"-1
             #read RELEASE <<< "$(gh release list --repo ABCDev/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
             read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName' |
-                                egrep -v "[-][0-9][0-9][0-9][0-9]|$re_BETA"'$' | sort -V | tail -1 )"
+                                grep -E -v "[-][0-9][0-9][0-9][0-9]|$re_BETA"'$' | sort -V | tail -1 )"
 # removed due to some kind of bash/vscode bug/clash???
 #            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
 #                let BASH_REMATCH[$typeof_major_minor_patch]++
