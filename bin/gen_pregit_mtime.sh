@@ -6,7 +6,7 @@
 # to reset the file's modification time to its original value.
 
 # USAGE: (ignores hidden .file and .dirs in pwd)
-#     find * -type f -print0 | sh gen_pregit_mtime.sh | sort -k5,99 > pregit_mtime.sh
+#     find * -type f -print0 | gen_pregit_mtime.sh | sort -z -k5 > pregit_mtime.sh
 # BUGS:
 #     Only tested in Linux
 #     Cannot handle single quotes with double quotes in filename
