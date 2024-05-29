@@ -145,7 +145,7 @@ set_env(){
 
     # Get/Set GitHub Personal Access Tokens for $USER_UPSTREAM and $USER_FEATURE
 
-    get_GH_PAT(){
+    depr_get_GH_PAT(){
         gh auth status -t | awk '
         BEGIN{
             USER_UPSTREAM="'"$USER_UPSTREAM"'";
@@ -160,6 +160,11 @@ set_env(){
                 }
             }
         }'
+    }
+
+    get_GH_PAT(){
+        echo "USER_UPSTREAM_TOKEN="$USER_UPSTREAM; 
+        echo "USER_FEATURE_TOKEN="$USER_FEATURE; 
     }
 
     eval "$(get_GH_PAT)"
@@ -468,7 +473,7 @@ CO(){
     fi
 }
 
-AUTH(){
+depr_AUTH(){
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
@@ -482,6 +487,32 @@ AUTH(){
                 return "$rc"
             else
                 $ECHO gh auth login --with-token
+                rc="$?"
+            fi
+            RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+        done
+        set -x
+        RAISE
+        THIS_AUTH="$1"
+    else
+        return 0
+    fi
+}
+
+AUTH(){
+    cmd="$*"
+    # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
+    if [ "$THIS_AUTH" != "$1" ]; then
+        for try in 1 2 3 4 5 6; do
+            #echo PW="$1"
+            if $WATCH gh auth switch -u "$1"; then
+                rc="$?"
+                THIS_AUTH="$1"
+                echo AUTH: SUCCESS
+                RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+                return "$rc"
+            else
+                $ECHO gh auth switch -u "$1"
                 rc="$?"
             fi
             RACECONDITIONWAIT 6 # GH can take a little time to do the above...
@@ -1245,6 +1276,12 @@ update_ts(){
 update(){
     $ASSERT commit_feature
     $ASSERT merge_feature
+}
+
+merge_and_release(){
+    #$ASSERT commit_feature
+    $ASSERT merge_feature
+    $ASSERT release
 }
 
 release(){
