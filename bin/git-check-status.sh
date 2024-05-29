@@ -93,7 +93,7 @@ eof
 # 
 # Determine the next release number.
 # 
-# (Bearing in mind a release number is of the format
+# (Bearing in mind a release number is of the SemVer format
 # Major#.minor#.patch#[-beta] ).  Hint: use `sort -V`
 # eg.  0.1.2 0.1.3 0.1.5-alpha 0.1.6-beta 0.1.7-beta
 # select release Major number that starts with a number.
