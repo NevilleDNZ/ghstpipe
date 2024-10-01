@@ -6,7 +6,7 @@
 # to reset the file's modification time to its original value.
 
 # USAGE: (ignores hidden .file and .dirs in pwd)
-#     find * -type f -print0 | gen_pregit_mtime.sh | sort -z -k5 > pregit_mtime.sh
+#     find * -type f -print0 | gen_pregit_mtime.sh | sort -z -k5,5 | tr "\0" "\n" > pregit_mtime.sh
 # BUGS:
 #     Only tested in Linux
 #     Cannot handle single quotes with double quotes in filename
@@ -26,11 +26,11 @@
         if [ ! -z "$mod_time" ]; then
             # Generate and output the touch command
             case "$file" in
-                (*"'"*) echo "touch -m -t $mod_time $qq$file$qq";;
-                (*)     echo "touch -m -t $mod_time '$file'";;
+                (*"'"*) printf "%s\0" "touch -m -t $mod_time $qq$file$qq";;
+                (*)     printf "%s\0" "touch -m -t $mod_time '$file'";;
             esac
         else
-            echo "Error: Could not retrieve modification time for '$file'."
+            echo "Error: Could not retrieve modification time for '$file'." 1>&2
         fi
     done
 # }
