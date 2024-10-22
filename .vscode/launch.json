@@ -7,10 +7,20 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug (simplest configuration)",
-            "program": "${file}",
+            "name": "Bash-Debug Current File - stdio integrated",
             "cwd": "${workspaceFolder}",
-            "terminal": "integrated"
+            "program": "${file}",
+            // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
+            "args": ["update","release"],
+            "terminalKind": "integrated"
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }
