@@ -11,7 +11,7 @@
             "cwd": "${workspaceFolder}",
             "program": "${file}",
             // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
-            "args": ["update","release"], // timing?
+            "args": ["update","release"],
             //"args": ["release"],
             "terminalKind": "integrated"
         },
