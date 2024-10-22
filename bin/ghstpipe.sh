@@ -852,7 +852,8 @@ create_local_releasing_repo(){
     echo "" >> README.md
     echo "Under Construction" >> README.md
     $ASSERT git add README.md
-    $ASSERT git commit -m "Add README.md with under construction message"
+# Just WATCH, as README,md might already exist
+    $WATCH git commit -m "Add README.md with under construction message"
 
     CO Create branches as specified
     HEAD=$TRUNK
@@ -1099,7 +1100,7 @@ commit_feature(){
     $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $ASSERT git commit -am "$FEATURE commit" # "$COMMIT_MESSAGE"
+    $WATCH git commit -am "$FEATURE commit" # "$COMMIT_MESSAGE"
     $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
