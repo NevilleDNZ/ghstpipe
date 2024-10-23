@@ -12,7 +12,7 @@
             "program": "${file}",
             // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
             //"args": ["update","release"],
-            "args":  ["update"],
+            "args":  ["merge_feature"],
             "terminalKind": "integrated"
         },
         {
