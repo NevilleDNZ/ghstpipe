@@ -16,7 +16,7 @@ set_env(){
     : "${__VERBOSITY:="-v"}" # or -vv
     : "${__DRYRUN:=""}" # ToDo: IF the command updates git, then ECHO only, OTHERWISE execute
     : "${__INTERACTIVE:=""}" # ToDo: ECHO commands to be executed, and prompt Skip/Next/Continue
-    : "${__COMMIT_ALL_DOWNSTREAM:="TrUe"}" # Commit ALL to DS, even the PR's to US - preserves filemod times in DS
+    : "${__COMMIT_ALL_DOWNSTREAM:=""}" # Commit ALL to DS, even the PRs to US - preserves filemod times in DS
 
 # ToDo: maybe rename proc `update` to `merge_develop`
 # ToDo: maybe rename proc `release` to `merge_release`
@@ -25,9 +25,6 @@ set_env(){
     VERY_VEBOSE='^-v+$' # or -vv
     GHO='gho_' # don't track PAT in the line with gho_* (Personal Accesss Token)
     NL=$'; \n'
-
-    : "${COMMIT_MESSAGE:="feature commit"}"
-    : "${MERGE_MESSAGE:="feature merge"}"
 
     if [ -n "$__BASHDB" ]; then # VSCode debug
         WATCH="" ASSERT=""
@@ -61,8 +58,8 @@ set_env(){
     : "${_UPSTREAM:="-upstream"}"
     : "${_DOWNSTREAM:="-downstream"}"
 
-    if [ ! -n "$PRJ_UPSTREAM" ]; then
-        read PRJ_UPSTREAM <<< $(git remote -v | ( read origin path method; expr "$path" : ".*/\(.*\)$_DOWNSTREAM"))
+    if [ -z "$PRJ_UPSTREAM" ]; then
+        read PRJ_UPSTREAM <<< "$(git remote -v | sed "s?.*/??; s/$_DOWNSTREAM//;"' s/[.]git ([^ ]*)$//')"
         : "${PRJ_UPSTREAM:=gh_hw0}"
     fi
 
@@ -74,30 +71,58 @@ set_env(){
     : "${PAT=$HOME/.ssh/gh_pat_$USER_UPSTREAM.oauth}"
 
     #: "${RELEASE_PREFIX:=release/}" # needed to uncloak releases to git from github
-    : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-(
+    : "${RELEASE_PREFIX:=""}" # but it creates "ghpl_test7-release-0.1.0.tar.gz" :-/
     : "${FEATURE_PREFIX:=feature/}"
-
-    : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
+    if [[ " $* " =~ " "(setup|init)" " ]]; then
+        : "${FEATURE:=${FEATURE_PREFIX}debut-src}"
+    else
+        read CURRENT <<<$(git branch --show-current) 2> /dev/null
+        rc="$?"
+        case "$rc" in
+            (0) if [[ "$CURRENT" =~ (hotfix/.+|feature/.+) ]]; then
+                    : "${FEATURE:=${CURRENT}}"
+                else
+                    echo "$0: You are in the wrong branch $CURRENT, try one of feature/* or hotfix/* ..." 1>&2
+                    git branch 
+                    exit "$rc"
+                fi
+            ;;
+            (*) :"${FEATURE:=${FEATURE_PREFIX}debut-src}";;
+        esac
+    fi
     : "${TESTING:=}" # alt2
     : "${FULLTEST:=}" # alt3
-    : "${BETA:=develop}"
+    : "${DEVELOP:=develop}"
     : "${STAGING:=}" # alt5
     : "${PREPROD:=}" # alt6
     : "${TRUNK=trunk}"
 
+ #   Maybe, various systems use alternative "beta" strategies
+    : "${BETA=beta}"
+    : "${_BETA=-$BETA}"
+    : "${re_BETA=[-._~+]$BETA}"
+    # ChatGPT: While you might encounter a ~beta suffix in very  
+    # specific contexts or projects that have decided on a unique  
+    # versioning scheme, it's not a widespread practice on GitHub.
+    # The -beta suffix (following SemVer guidelines) is far more 
+    # common and recognized for indicating beta releases. 
+
+    : "${COMMIT_MESSAGE:="$FEATURE commit"}"
+    : "${MERGE_MESSAGE:="$FEATURE merge"}"  
+
     # cf. https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/what-happens-to-forks-when-a-repository-is-deleted-or-changes-visibility#changing-a-private-repository-to-a-public-repository
-    : "${VISIBILITY:=private}"
+    #: "${VISIBILITY:=private}"
     : "${VISIBILITY:=public}"
 
-    PIPELINE_FEATURE="$TESTING $FULLTEST $BETA" # from FEATURE
-    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from BETA
+    PIPELINE_FEATURE="$TESTING $FULLTEST $DEVELOP" # from FEATURE
+    PIPELINE_UPSTREAM="$STAGING $PREPROD $TRUNK" # from DEVELOP
     PIPELINE_TAIL="$FEATURE $PIPELINE_FEATURE $PIPELINE_UPSTREAM"
-    REV_PIPELINE_HEAD="$PREPROD $STAGING $BETA $FULLTEST $TESTING $FEATURE"
+    REV_PIPELINE_HEAD="$PREPROD $STAGING $DEVELOP $FULLTEST $TESTING $FEATURE"
 
     if [ -n "$__COMMIT_ALL_DOWNSTREAM" ]; then
-        BETA=$TRUNK
+        DEVELOP=$TRUNK
         PIPELINE_FEATURE="$PIPELINE_TAIL" # from FEATURE
-        PIPELINE_UPSTREAM="" # from BETA
+        PIPELINE_UPSTREAM="" # from DEVELOP
     fi 
 
      : "${GIT_MERGE:=""}"
@@ -120,7 +145,7 @@ set_env(){
 
     # Get/Set GitHub Personal Access Tokens for $USER_UPSTREAM and $USER_FEATURE
 
-    get_GH_PAT(){
+    depr_get_GH_PAT(){
         gh auth status -t | awk '
         BEGIN{
             USER_UPSTREAM="'"$USER_UPSTREAM"'";
@@ -135,6 +160,11 @@ set_env(){
                 }
             }
         }'
+    }
+
+    get_GH_PAT(){
+        echo "USER_UPSTREAM_TOKEN="$USER_UPSTREAM; 
+        echo "USER_FEATURE_TOKEN="$USER_FEATURE; 
     }
 
     eval "$(get_GH_PAT)"
@@ -165,6 +195,8 @@ set_msg(){
         (RELEASE_MERGE_BODY) eval export $1='"$BODY"';;
         (RELEASE_TITLE) eval export $1='"Release $RELEASE $NL $SUBJECT"';;
         (RELEASE_NOTES) eval export $1='"Release $RELEASE $NL $BODY"';;
+        (DEVELOP_RELEASE_TITLE) eval export $1='"Beta Release $RELEASE$_BETA $NL $SUBJECT"';;
+        (DEVELOP_RELEASE_NOTES) eval export $1='"Beta Release $RELEASE$_BETA $NL $BODY"';;
         (*)echo HUH | RAISE;;
     esac
 }
@@ -238,14 +270,14 @@ You also need to generate a Github a Personal Authentication Token for each GitH
 
 # A crude guide to the sequence GHSTPIPE performs tasks:
  * On '\$TRUNK' create a README.md file containing the Line “Under
-Construction”, and merge this into \$BETA, then \$STAGING, then \$TRUNK.
+Construction”, and merge this into \$DEVELOP, then \$STAGING, then \$TRUNK.
  * Use 'gh repo create' and 'git push' to register the project under
 \$USER_UPSTREAM at github.
  * Create a local empty git repository called \$PRJ_UPSTREAM
  * Instead of creating a 'master' branch, create a '\$TRUNK'.
  * Also create a '\$FEATURE' branch from '\$TESTING'.
- * Also create a '\$TESTING' branch from '\$BETA'.
- * Also create a '\$BETA' branch from '\$STAGING'.
+ * Also create a '\$TESTING' branch from '\$DEVELOP'.
+ * Also create a '\$DEVELOP' branch from '\$STAGING'.
  * Also create a '\$STAGING' branch from '\$TRUNK'.
  * Grant \$USER_FEATURE rights enough to fork \$PRJ_UPSTREAM.
  * Then clone the repo to \$USER_FEATURE's account, as a forked repo called
@@ -261,8 +293,8 @@ bin/\$APP) in this branch.
  * Add and then 'commit' these changes to the local repo.
  * Add another line to \$APP that print "Goodbye cruel world!"
  * Add and then 'commit' these changes to the local repo.
- * Switch to the local \$BETA branch, and synchronise with \$USER_FEATURE's
-version of \$BETA.
+ * Switch to the local \$DEVELOP branch, and synchronise with \$USER_FEATURE's
+version of \$DEVELOP.
 
 ## EXAMPLE
 
@@ -382,7 +414,7 @@ CD(){ # avoid dancing about the 2 directories...
 
 INDENT="++++"
 
-WATCH(){ # trace only, don't track errno in $?
+WATCH(){ # trace only, dont track errno in $?
     LN="$(caller | sed "s/ .*//")"
     cmd="$*"
     [[ "$__VERBOSITY" =~ $VERBOSE && ! "$*" =~ $GHO ]] && echo_Q $INDENT:$LN: "$@" 1>&2
@@ -407,8 +439,8 @@ RAISE(){
     errno="$?"
     LN="$(caller 1 | sed "s/ .*//")"
     case "$#" in
-        (0) echo_Q RAISED:$LN/$errno: "$cmd" 1>&2;;
-        (*) echo_Q RAISED:$LN/$errno: "$@" 1>&2;;
+        (0) echo_Q EXCEPTION:$LN/$errno: "$cmd" 1>&2;;
+        (*) echo_Q EXCEPTION:$LN/$errno: "$@" 1>&2;;
     esac
     exit "$errno"
 }
@@ -441,7 +473,7 @@ CO(){
     fi
 }
 
-AUTH(){
+depr_AUTH(){
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
@@ -455,6 +487,32 @@ AUTH(){
                 return "$rc"
             else
                 $ECHO gh auth login --with-token
+                rc="$?"
+            fi
+            RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+        done
+        set -x
+        RAISE
+        THIS_AUTH="$1"
+    else
+        return 0
+    fi
+}
+
+AUTH(){
+    cmd="$*"
+    # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
+    if [ "$THIS_AUTH" != "$1" ]; then
+        for try in 1 2 3 4 5 6; do
+            #echo PW="$1"
+            if $WATCH gh auth switch -u "$1"; then
+                rc="$?"
+                THIS_AUTH="$1"
+                echo AUTH: SUCCESS
+                RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+                return "$rc"
+            else
+                $ECHO gh auth switch -u "$1"
                 rc="$?"
             fi
             RACECONDITIONWAIT 6 # GH can take a little time to do the above...
@@ -782,7 +840,7 @@ create_local_releasing_repo(){
     else
         $ASSERT git init
     fi
-    $ASSERT git config --local init.defaultBranch $BETA
+    $ASSERT git config --local init.defaultBranch $DEVELOP
     $WATCH git checkout -b $TRUNK
     $ASSERT git add .
     #$ASSERT git commit -m "Commit (master/main) $TRUNK branch"
@@ -794,7 +852,8 @@ create_local_releasing_repo(){
     echo "" >> README.md
     echo "Under Construction" >> README.md
     $ASSERT git add README.md
-    $ASSERT git commit -m "Add README.md with under construction message"
+# Just WATCH, as README,md might already exist
+    $WATCH git commit -m "Add README.md with under construction message"
 
     CO Create branches as specified
     HEAD=$TRUNK
@@ -805,7 +864,7 @@ create_local_releasing_repo(){
 
     # git merge staging ...; => Already up to date.
 #    # ToDo#0: use REV_PIPELINE below??
-#    CO Merge $FEATURE into $TESTING, $BETA, $STAGING, and $TRUNK
+#    CO Merge $FEATURE into $TESTING, $DEVELOP, $STAGING, and $TRUNK
 #    HEAD=$FEATURE
 #    for BASE in $PIPELINE_TAIL; do
 #         $WATCH git checkout $BASE
@@ -1041,12 +1100,12 @@ commit_feature(){
     $ASSERT git pull # with default # origin $FEATURE # QQQ
 
     CO Add another line to the script
-    $ASSERT git commit -am "$COMMIT_MESSAGE"
+    $WATCH git commit -am "$FEATURE commit" # "$COMMIT_MESSAGE"
     $ASSERT git push # with default # origin $FEATURE
 #    CD -
 }
 
-HELP_merge_feature="Merge $FEATURE into $BETA"
+HELP_merge_feature="Merge $FEATURE into $DEVELOP"
 merge_feature(){
 
     AUTH $USER_FEATURE_TOKEN
@@ -1061,7 +1120,8 @@ merge_feature(){
 
         CO Merge $HEAD into $BASE
         #$ASSERT git merge $GIT_MERGE $HEAD # WARNING: merge conflicts appear here.
-        $ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        #$ASSERT git merge $GIT_MERGE -m "$MERGE_MESSAGE"  $HEAD # WARNING: merge conflicts appear here.
+        $ASSERT git merge $GIT_MERGE -m "$HEAD => $BASE merge"  $HEAD # WARNING: merge conflicts appear here.
         $ASSERT git push # with default # origin $BASE
         HEAD=$BASE
     done
@@ -1078,9 +1138,9 @@ create_fork_pull_request(){
     $ASSERT gh repo set-default https://github.com/$USER_FEATURE/$PRJ_FEATURE
     RACECONDITIONWAIT # GH can take a little time to do the above...
 
-    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $BETA --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
+    # chatgpt: $ASSERT gh pr create --base $USER_UPSTREAM:$TRUNK --head $DEVELOP --title "Feature A integration" --body "Integrating feature A changes into $TRUNK."
 
-    BRANCH=$BETA
+    BRANCH=$DEVELOP
     set_msg DEVELOP_PR_TITLE '$FEATURE integration into upstream $BRANCH'
     set_msg DEVELOP_PR_BODY 'Integrating $FEATURE changes into $USER_UPSTREAM/$PRJ_UPSTREAM:$BRANCH.'
 
@@ -1119,9 +1179,9 @@ upstream_pr_merge(){
     AUTH $USER_UPSTREAM_TOKEN
     CD $PRJ_FEATURE
 
-    CO Merge $BETA into $STAGING
+    CO Merge $DEVELOP into $STAGING
     CO Merge $STAGING into $TRUNK
-    HEAD=$BETA # from
+    HEAD=$DEVELOP # from
     for BASE in $PIPELINE_UPSTREAM; do
         set_msg RELEASE_PR_TITLE '$FEATURE integration into $BASE'
         set_msg RELEASE_PR_BODY 'Integrating $FEATURE changes into $BASE.'
@@ -1149,7 +1209,7 @@ upstream_tag_and_release(){
             let typeof_major_minor_patch="${#RELEASE}"-1
             #read RELEASE <<< "$(gh release list --repo ABCDev/ghstpipe --json tagName,isLatest --jq '.[] | select(.isLatest==true) | .tagName')"
             read RELEASE <<< "$(gh release list --repo $USER_UPSTREAM/$PRJ_UPSTREAM --json tagName,isLatest --jq '.[] | .tagName' |
-                                egrep -v '[-][0-9][0-9][0-9][0-9]|[-.]beta$' | sort -V | tail -1 )"
+                                grep -E -v "[-][0-9][0-9][0-9][0-9]|$re_BETA"'$' | sort -V | tail -1 )"
 # removed due to some kind of bash/vscode bug/clash???
 #            if [[ "$RELEASE" =~ ^$RELEASE_PREFIX([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
 #                let BASH_REMATCH[$typeof_major_minor_patch]++
@@ -1170,18 +1230,19 @@ upstream_tag_and_release(){
     echo RELEASE="$RELEASE"
     set_msg RELEASE_TITLE 'Release $RELEASE'
     set_msg RELEASE_NOTES 'Release $RELEASE'
+    set_msg DEVELOP_RELEASE_TITLE 'Release $RELEASE$_BETA'
+    set_msg DEVELOP_RELEASE_NOTES 'Release $RELEASE$_BETA'
 
     CO Create a GitHub release for the tag
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
-    RACECONDITIONWAIT
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE"      --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
-    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE$_BETA" --target "$DEVELOP" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$DEVELOP_RELEASE_TITLE $NL beta" --prerelease --notes "Beta: $RELEASE_NOTES"
+    RACECONDITIONWAIT 18
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE" --latest --target "$TRUNK" --repo $USER_UPSTREAM/$PRJ_UPSTREAM --title "$RELEASE_TITLE" --notes "$RELEASE_NOTES"
 
     AUTH $USER_FEATURE_TOKEN
     CD $PRJ_FEATURE
-    RACECONDITIONWAIT 6 # GH can take a little time to do the above...
+    RACECONDITIONWAIT # GH can take a little time to do the above...
 # on downstream
-    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE-beta" --target "$BETA" --repo $USER_FEATURE/$PRJ_FEATURE --title "$RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
+    $ASSERT gh release create "$RELEASE_PREFIX$RELEASE$_BETA" --target "$DEVELOP" --repo $USER_FEATURE/$PRJ_FEATURE --title "$DEVELOP_RELEASE_TITLE $NL beta" --prerelease --notes "$RELEASE_NOTES"
 # on upstream
 
     if [ -n "$major_minor_patch" ]; then
@@ -1189,7 +1250,7 @@ upstream_tag_and_release(){
         unset "$major_minor_patch"
     fi
 #    CD -
- }
+}
 
 HELP_pr_merge_tag_and_release="Create upstream's PR, merge, Tag and Release"
 pr_merge_tag_and_release(){
@@ -1216,6 +1277,12 @@ update_ts(){
 update(){
     $ASSERT commit_feature
     $ASSERT merge_feature
+}
+
+merge_and_release(){
+    #$ASSERT commit_feature
+    $ASSERT merge_feature
+    $ASSERT release
 }
 
 release(){
