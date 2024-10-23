@@ -11,8 +11,8 @@
             "cwd": "${workspaceFolder}",
             "program": "${file}",
             // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
-            //"args": ["update","release"],
-            "args":  ["merge_feature"],
+            // "args": ["update","release"],
+            "args": ["merge_feature"],
             "terminalKind": "integrated"
         },
         {
