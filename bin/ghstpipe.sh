@@ -52,6 +52,8 @@ set_env(){
 
     case "$USER" in
       (nevilled): "${USER_UPSTREAM:=NevilleDNZ}";;
+      (batman): "${USER_UPSTREAM:=BruceWayne}";;
+      (superman): "${USER_UPSTREAM:=ClakrKent}";;
     esac
 
     # Default other variables
@@ -163,8 +165,14 @@ set_env(){
     }
 
     get_GH_PAT(){
-        echo "USER_UPSTREAM_TOKEN="$USER_UPSTREAM; 
-        echo "USER_FEATURE_TOKEN="$USER_FEATURE; 
+        case "$__TOKEN" in 
+            (true) grep "^USER_[A-Z]*_TOKEN=" $PAT;;
+            # (true). $PAT;;
+            (*)
+                echo "USER_UPSTREAM_TOKEN="$USER_UPSTREAM; 
+                echo "USER_FEATURE_TOKEN="$USER_FEATURE;
+            ;;
+        esac
     }
 
     eval "$(get_GH_PAT)"
@@ -172,6 +180,11 @@ set_env(){
     # echo USER_FEATURE_TOKEN=$USER_FEATURE_TOKEN
 
     if [ -z "$USER_UPSTREAM_TOKEN" -o -z "$USER_FEATURE_TOKEN" ]; then
+# Set GitHub Personal Access Tokens for $USER_PUB and $USER_DEV#
+# eg.
+#USER_UPSTREAM_TOKEN="gho_uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu"
+#USER_FEATURE_TOKEN="gho_ffffffffffffffffffffffffffffffffffff"
+
       . $PAT
     fi
 
@@ -473,7 +486,7 @@ CO(){
     fi
 }
 
-depr_AUTH(){
+AUTH_token(){ # depr: `gh auth login --with-token`, as per gh version 2.23.0 (2023-02-27 Debian 2.23.0+dfsg1-1)
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
@@ -499,7 +512,7 @@ depr_AUTH(){
     fi
 }
 
-AUTH(){
+AUTH_switch(){ # with `gh auth switch`, as per gh version 2.62.0 (2024-11-14)
     cmd="$*"
     # ECHO AUTH "was:$THIS_AUTH" cmp "want:$1"
     if [ "$THIS_AUTH" != "$1" ]; then
@@ -523,6 +536,13 @@ AUTH(){
     else
         return 0
     fi
+}
+
+AUTH(){
+    case "$1" in 
+        (gho_*)AUTH_token "$@";; # assume the token in prefixed with gho_
+        (*)AUTH_switch "$@";;
+    esac
 }
 
 sample_runs(){
