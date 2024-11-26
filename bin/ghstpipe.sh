@@ -166,9 +166,8 @@ set_env(){
 
     get_GH_PAT(){
         case "$__TOKEN" in 
-            (true) grep "^USER_[A-Z]*_TOKEN=" $PAT;;
-            # (true). $PAT;;
-            (*)
+            (true|yes) grep "^USER_[A-Z]*_TOKEN=" $PAT;;
+            (false|no|*)
                 echo "USER_UPSTREAM_TOKEN="$USER_UPSTREAM; 
                 echo "USER_FEATURE_TOKEN="$USER_FEATURE;
             ;;
