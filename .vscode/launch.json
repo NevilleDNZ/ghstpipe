@@ -10,9 +10,6 @@
             "name": "Bash-Debug Current File - stdio integrated",
             "cwd": "${workspaceFolder}",
             "program": "${file}",
-            // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
-            // "args": ["update","release"],
-            "args":  ["__TOKEN=true","merge_feature"],
             "terminalKind": "integrated"
         },
         {
@@ -23,7 +20,8 @@
             "program": "${file}",
             // "args0": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
             // "args": ["update","release"],
-            "args":  ["__TOKEN=true","merge_feature"],
+            // "args":  ["__TOKEN=true","merge_feature"],
+            "args":  ["__TOKEN=true","merge_feature","release"],
             "terminalKind": "integrated"
         },
         {
