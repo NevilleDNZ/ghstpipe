@@ -16,7 +16,18 @@
         {
             "type": "bashdb",
             "request": "launch",
-            "name": "Bash-Debug Current File - ghstpipe",
+            "name": "Bash-Debug Current File - ghstpipe __TOKEN=true - debian",
+            "cwd": "${workspaceFolder}",
+            "program": "${file}",
+            // "args": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
+            // "args": ["update","release"],
+            "args":  ["__TOKEN=true","merge_feature", "release"],
+            "terminalKind": "integrated"
+        },
+        {
+            "type": "bashdb",
+            "request": "launch",
+            "name": "Bash-Debug Current File - ghstpipe __TOKEN=false - RHEL",
             "cwd": "${workspaceFolder}",
             "program": "${file}",
             // "args": ["__WRAP_UPSTREAM=yes", "PRJ_UPSTREAM=ghstpipe", "setup"],
@@ -26,7 +37,7 @@
         },
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
